@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "735518718739",
+    "project_id": "cerca-7f98c",
+    "storage_bucket": "cerca-7f98c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:735518718739:android:f9f174817e1feaa43738e6",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "735518718739-np8el7epl43dhojuq1eh0o3t3pm1j8tb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAvTRbRYzSW5VqCR_5vaDHZ8OqDuBWJTw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "735518718739-np8el7epl43dhojuq1eh0o3t3pm1j8tb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "735518718739-mih6200apd0khgdccfrlkbqg2a4e78t3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
