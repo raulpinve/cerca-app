@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:app/features/auth/presentation/pages/login.dart';
-import 'package:app/features/invitations/pages/invitation_page.dart';
+import 'package:app/features/invitations/presentation/pages/invitations_page.dart';
 import 'package:app/features/mapa/presentation/pages/mapa_page.dart';
 import 'package:app/features/navigation/presentation/pages/main_navigation_page.dart';
 import 'package:app/features/profile/presentation/pages/profile_page.dart';

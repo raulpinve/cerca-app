@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/theme/app_colors.dart';
+import 'package:app/features/invitations/data/repositories/invitation_repository.dart';
 import 'package:app/features/location/data/repositories/device_repository.dart';
 import 'package:app/features/location/data/repositories/location_repository.dart';
 import 'package:app/features/location/data/services/location_tracking_service.dart';
@@ -13,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:app/features/mapa/data/mappers/member_location_mapper.dart';
+import 'package:app/features/invitations/presentation/pages/invitations_page.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 
 class MapaPage extends StatefulWidget {
@@ -30,6 +32,7 @@ class _MapaPageState extends State<MapaPage> {
   final _deviceRepository = DeviceRepository();
   final _circleRepository = CircleRepository();
   final _mapController = MapController();
+  final _invitationRepository = InvitationRepository();
 
   bool _hasCenteredOnce = false;
   String? _deviceId;
@@ -327,6 +330,120 @@ class _MapaPageState extends State<MapaPage> {
     debugPrint('Permiso actual: $permission');
   }
 
+  Future<void> _showInviteDialog() async {
+    final controller = TextEditingController();
+    final colors = context.appColors;
+
+    if (activeCircleId == null) return;
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Invitar a ${activeCircle?.name ?? "este círculo"}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                style: TextStyle(color: colors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Correo electrónico',
+                  hintStyle: TextStyle(color: colors.textSecondary),
+                  filled: true,
+                  fillColor: colors.indicator,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(color: colors.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.pop(context, controller.text.trim()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.selected,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Invitar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (email != null && email.isNotEmpty) {
+      await _sendInvitation(email);
+    }
+  }
+
+  Future<void> _sendInvitation(String email) async {
+    try {
+      await _invitationRepository.createInvitation(
+        circleId: activeCircleId!,
+        email: email,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invitación enviada a $email')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error enviando invitación: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo enviar la invitación: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _locationService.stop();
@@ -493,36 +610,71 @@ class _MapaPageState extends State<MapaPage> {
                     },
                   ),
                 ),
+                Row(
+                  children: [
+                    CircleIconButton(
+                      icon: Icons.person_add_outlined,
+                      onTap: activeCircleId != null ? _showInviteDialog : null,
+                    ),
+                    const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: Icons.add,
+                      onTap: _showCreateCircleDialog,
+                    ),
+                    const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: Icons.notifications_outlined,
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const InvitationsPage(),
+                          ),
+                        );
+                        _loadCircles();
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: SafeArea(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: _centerOnMyLocation,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.my_location, color: colors.selected),
-              ),
-            ),
-          ),
-        ),
       ],
+    );
+  }
+}
+
+class CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+
+  const CircleIconButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.size = 38,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(size / 2),
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: colors.surface,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8),
+          ],
+        ),
+        child: Icon(icon, size: size * 0.47, color: colors.unselected),
+      ),
     );
   }
 }
