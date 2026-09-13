@@ -224,11 +224,6 @@ class CircleSelectorSheet extends StatelessWidget {
             title: const Text('Crear círculo'),
             onTap: onCreateCircle,
           ),
-          ListTile(
-            leading: Icon(Icons.inbox_outlined, color: colors.unselected),
-            title: const Text('Unirme con código'),
-            onTap: onJoinWithCode,
-          ),
         ],
       ),
     );
@@ -244,6 +239,7 @@ void showCircleSelector(
   required List<Circle> circles,
   required String activeCircleId,
   required ValueChanged<String> onCircleSelected,
+  required VoidCallback onCreateCircle,
 }) {
   final colors = context.appColors;
 
@@ -269,7 +265,10 @@ void showCircleSelector(
                 onCircleSelected(id);
                 Navigator.of(context).pop();
               },
-              onCreateCircle: () => Navigator.of(context).pop(),
+              onCreateCircle: () {
+                Navigator.of(context).pop(); // cierra el selector
+                onCreateCircle();
+              },
               onJoinWithCode: () => Navigator.of(context).pop(),
             ),
           ),
