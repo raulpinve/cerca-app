@@ -24,7 +24,7 @@ class MapaPage extends StatefulWidget {
   State<MapaPage> createState() => _MapaPageState();
 }
 
-class _MapaPageState extends State<MapaPage> {
+class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   List<MemberLocation> _members = [];
   Timer? _refreshTimer;
   final _locationService = LocationTrackingService();
@@ -33,6 +33,7 @@ class _MapaPageState extends State<MapaPage> {
   final _circleRepository = CircleRepository();
   final _mapController = MapController();
   final _invitationRepository = InvitationRepository();
+  LocationPermission? _permissionStatus;
 
   bool _hasCenteredOnce = false;
   String? _deviceId;
@@ -50,6 +51,7 @@ class _MapaPageState extends State<MapaPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDeviceAndTracking();
     _checkPermissionStatus();
     _loadCircles();
@@ -60,6 +62,21 @@ class _MapaPageState extends State<MapaPage> {
         showLoading: false,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _locationService.stop();
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissionStatus();
+    }
   }
 
   Future<void> _loadCircles() async {
@@ -328,6 +345,9 @@ class _MapaPageState extends State<MapaPage> {
   Future<void> _checkPermissionStatus() async {
     final permission = await Geolocator.checkPermission();
     debugPrint('Permiso actual: $permission');
+    if (mounted) {
+      setState(() => _permissionStatus = permission);
+    }
   }
 
   Future<void> _showInviteDialog() async {
@@ -437,18 +457,14 @@ class _MapaPageState extends State<MapaPage> {
     } catch (e) {
       debugPrint('Error enviando invitación: $e');
       if (mounted) {
+        final message = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo enviar la invitación: $e')),
+          SnackBar(
+            content: Text(message),
+          ),
         );
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _locationService.stop();
-    _refreshTimer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -588,6 +604,97 @@ class _MapaPageState extends State<MapaPage> {
               ),
             ),
           ),
+
+        if (_permissionStatus == LocationPermission.denied ||
+            _permissionStatus == LocationPermission.deniedForever)
+          Positioned(
+            top: 140,
+            left: 16,
+            right: 16,
+            child: Material(
+              color: Colors.orange.shade100,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_off,
+                          color: Colors.orange.shade800,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Sin permiso de ubicación. Actívalo en Ajustes para que tu familia pueda verte',
+                            style: TextStyle(
+                              color: Colors.orange.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Geolocator.openAppSettings(),
+                        child: Text(
+                          'Ir a Ajustes',
+                          style: TextStyle(color: Colors.orange.shade900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        if (_permissionStatus == LocationPermission.whileInUse)
+          Positioned(
+            top: 80,
+            left: 16,
+            right: 16,
+            child: Material(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Actívalo también en segundo plano para no perder tu ubicación',
+                        style: TextStyle(
+                          color: Colors.blue.shade900,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Geolocator.openAppSettings(),
+                      child: Text(
+                        'Ajustes',
+                        style: TextStyle(color: Colors.blue.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),

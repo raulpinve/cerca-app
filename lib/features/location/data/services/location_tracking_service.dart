@@ -40,7 +40,6 @@ class LocationTrackingService {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      await Geolocator.openAppSettings();
       return false;
     }
 
