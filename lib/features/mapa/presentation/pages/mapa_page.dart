@@ -1,44 +1,17 @@
+import 'dart:async';
+
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/theme/app_colors.dart';
+import 'package:app/features/location/data/repositories/device_repository.dart';
+import 'package:app/features/location/data/repositories/location_repository.dart';
+import 'package:app/features/location/data/services/location_tracking_service.dart';
+import 'package:app/features/location/presentation/pages/location_history_page.dart';
+import 'package:app/features/mapa/data/repositories/circle_repository.dart';
 import 'package:app/features/mapa/presentation/widgets/circle_selector.dart';
 import 'package:app/features/mapa/presentation/widgets/family_map.dart';
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart' show LatLng;
-
-// Datos de ejemplo. Después esto viene de tu CircleRepository / provider.
-final circles = <Circle>[
-  const Circle(
-    id: '1',
-    name: 'Familia Gomez',
-    memberCount: 4,
-    memberInitials: ['MA', 'PA', 'SO'],
-  ),
-  const Circle(
-    id: '2',
-    name: 'Amigos del asado',
-    memberCount: 3,
-    memberInitials: ['LU', 'TI'],
-  ),
-];
-
-// Ubicaciones de ejemplo. Después esto viene de current_locations vía tu repo/websocket.
-final sampleMembers = <MemberLocation>[
-  const MemberLocation(
-    initials: 'MA',
-    position: LatLng(4.7110, -74.0721),
-    color: Color(0xFFE9C9A0),
-  ),
-  const MemberLocation(
-    initials: 'PA',
-    position: LatLng(4.7050, -74.0650),
-    color: Color(0xFFC9AEDD),
-  ),
-  const MemberLocation(
-    initials: 'SO',
-    position: LatLng(4.7180, -74.0600),
-    color: Color(0xFFE9A0A0),
-  ),
-];
+import 'package:geolocator/geolocator.dart';
+import 'package:app/features/mapa/data/mappers/member_location_mapper.dart';
 
 class MapaPage extends StatefulWidget {
   const MapaPage({super.key});
@@ -48,20 +21,238 @@ class MapaPage extends StatefulWidget {
 }
 
 class _MapaPageState extends State<MapaPage> {
-  String activeCircleId = circles.first.id;
+  List<MemberLocation> _members = [];
+  Timer? _refreshTimer;
+  final _locationService = LocationTrackingService();
+  final _locationRepository = LocationRepository();
+  final _deviceRepository = DeviceRepository();
+  final _circleRepository = CircleRepository();
+  String? _deviceId;
 
-  Circle get activeCircle => circles.firstWhere((c) => c.id == activeCircleId);
+  List<Circle> _circles = [];
+  String? activeCircleId;
+  bool _isLoadingCircles = true;
+
+  Circle? get activeCircle => _circles.isEmpty
+      ? null
+      : _circles.firstWhere((c) => c.id == activeCircleId);
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeviceAndTracking();
+    _checkPermissionStatus();
+    _loadCircles();
+
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _loadCircleLocations(),
+    );
+  }
+
+  Future<void> _loadCircles() async {
+    setState(() => _isLoadingCircles = true);
+
+    try {
+      final responses = await _circleRepository.getMyCircles();
+
+      final circles = responses
+          .map(
+            (r) => Circle(
+              id: r.id,
+              name: r.name,
+              memberCount: r.memberCount,
+              memberInitials: r.memberInitials,
+            ),
+          )
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _circles = circles;
+          activeCircleId = circles.isNotEmpty ? circles.first.id : null;
+          _isLoadingCircles = false;
+        });
+      }
+
+      if (activeCircleId != null) {
+        await _loadCircleLocations();
+      }
+    } catch (e) {
+      debugPrint('Error cargando círculos: $e');
+      if (mounted) setState(() => _isLoadingCircles = false);
+    }
+  }
+
+  Future<void> _createCircle(String name) async {
+    try {
+      await _circleRepository.createCircle(name);
+      await _loadCircles();
+    } catch (e) {
+      debugPrint('Error creando círculo: $e');
+    }
+  }
+
+  Future<void> _showCreateCircleDialog() async {
+    final controller = TextEditingController();
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nuevo círculo'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Ej: Mi familia'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty) {
+      await _createCircle(name);
+    }
+  }
+
+  Future<void> _loadCircleLocations() async {
+    if (activeCircleId == null) return;
+
+    debugPrint('Cargando ubicaciones para circleId: $activeCircleId');
+    try {
+      final responses = await _locationRepository.getCircleLocations(
+        activeCircleId!,
+      );
+      final members = responses.map(toMemberLocation).toList();
+      if (mounted) setState(() => _members = members);
+    } catch (e) {
+      debugPrint('Error cargando ubicaciones del círculo: $e');
+    }
+  }
+
+  Future<void> _initDeviceAndTracking() async {
+    try {
+      _deviceId = await _deviceRepository.getOrRegisterDeviceId();
+      debugPrint('Device ID: $_deviceId');
+    } catch (e) {
+      debugPrint('Error registrando dispositivo: $e');
+      return; // sin deviceId no arrancamos el tracking
+    }
+
+    await _startLocationTracking();
+  }
+
+  Future<void> _startLocationTracking() async {
+    final started = await _locationService.start(
+      onUpdate: _onOwnLocationUpdate,
+    );
+
+    debugPrint('¿Tracking iniciado?: $started');
+
+    if (!started && mounted) {
+      debugPrint('No se pudieron iniciar los permisos de ubicación');
+    }
+  }
+
+  void _onOwnLocationUpdate(Position position) async {
+    if (_deviceId == null) return;
+
+    await _locationRepository.updateMyLocation(
+      deviceId: _deviceId!,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracyM: position.accuracy,
+    );
+
+    debugPrint('Enviado: ${position.latitude}, ${position.longitude}');
+  }
+
+  Future<void> _checkPermissionStatus() async {
+    final permission = await Geolocator.checkPermission();
+    debugPrint('Permiso actual: $permission');
+  }
+
+  @override
+  void dispose() {
+    _locationService.stop();
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
+    if (_isLoadingCircles) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_circles.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('No tienes círculos todavía.'),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: _showCreateCircleDialog,
+                child: const Text('Crear mi primer círculo'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Stack(
       children: [
         FamilyMap(
-          members: sampleMembers,
-          cartoApiKey: AppConfig
-              .cartoApiKey, // pegá la que te dé carto.com/basemaps/apikey
+          members: _members,
+          cartoApiKey: AppConfig.cartoApiKey,
+          onViewFullHistory: (member) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => LocationHistoryPage(
+                  memberName: member.name,
+                  initials: member.initials,
+                  color: member.color,
+                  points: [
+                    LocationPoint(
+                      latitude: 4.7110,
+                      longitude: -74.0721,
+                      recordedAt: DateTime.now().subtract(
+                        const Duration(hours: 6),
+                      ),
+                    ),
+                    LocationPoint(
+                      latitude: 4.7080,
+                      longitude: -74.0700,
+                      recordedAt: DateTime.now().subtract(
+                        const Duration(hours: 5, minutes: 15),
+                      ),
+                    ),
+                    LocationPoint(
+                      latitude: 4.7050,
+                      longitude: -74.0650,
+                      recordedAt: DateTime.now().subtract(
+                        const Duration(hours: 5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         SafeArea(
           child: Padding(
@@ -70,20 +261,34 @@ class _MapaPageState extends State<MapaPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CircleChip(
-                  circle: activeCircle,
+                  circle: activeCircle!,
                   onTap: () => showCircleSelector(
                     context,
-                    circles: circles,
-                    activeCircleId: activeCircleId,
-                    onCircleSelected: (id) =>
-                        setState(() => activeCircleId = id),
+                    circles: _circles,
+                    activeCircleId: activeCircleId!,
+                    onCircleSelected: (id) {
+                      setState(() {
+                        activeCircleId = id;
+                        _members = [];
+                      });
+                      _loadCircleLocations();
+                    },
                   ),
                 ),
-                CircleIconButton(
-                  icon: Icons.notifications_outlined,
-                  onTap: () {
-                    // navegar a Invitaciones
-                  },
+                Row(
+                  children: [
+                    CircleIconButton(
+                      icon: Icons.add,
+                      onTap: _showCreateCircleDialog,
+                    ),
+                    const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: Icons.notifications_outlined,
+                      onTap: () {
+                        // navegar a Invitaciones
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:app/features/auth/presentation/pages/location_page.dart';
 import 'package:app/features/auth/presentation/pages/login.dart';
-import 'package:app/features/auth/presentation/pages/perfil_page.dart';
+import 'package:app/features/invitations/pages/invitation_page.dart';
 import 'package:app/features/mapa/presentation/pages/mapa_page.dart';
 import 'package:app/features/navigation/presentation/pages/main_navigation_page.dart';
+import 'package:app/features/profile/presentation/pages/profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -44,7 +44,7 @@ final GoRouter appRouter = GoRouter(
 
     // Autenticado → Home
     if (isLoggedIn && isLoginPage) {
-      return '/home';
+      return '/maps';
     }
 
     return null;
@@ -65,26 +65,26 @@ final GoRouter appRouter = GoRouter(
       },
       routes: [
         GoRoute(
-          path: '/home',
-          name: 'home',
+          path: '/maps',
+          name: 'maps',
           builder: (context, state) {
             return const MapaPage();
           },
         ),
 
         GoRoute(
-          path: '/location',
-          name: 'location',
+          path: '/invitations',
+          name: 'invitations',
           builder: (context, state) {
-            return const LocationPage();
+            return const InvitationsPage();
           },
         ),
 
         GoRoute(
-          path: '/family',
-          name: 'family',
+          path: '/profile',
+          name: 'profile',
           builder: (context, state) {
-            return const PerfilPage();
+            return const ProfilePage();
           },
         ),
       ],

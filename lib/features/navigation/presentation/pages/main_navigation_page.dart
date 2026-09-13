@@ -19,9 +19,9 @@ class MainNavigationPage extends StatelessWidget {
 
     int selectedIndex = 0;
 
-    if (location.startsWith('/location')) {
+    if (location.startsWith('/invitations')) {
       selectedIndex = 1;
-    } else if (location.startsWith('/family')) {
+    } else if (location.startsWith('/profile')) {
       selectedIndex = 2;
     }
 
@@ -45,13 +45,13 @@ class MainNavigationPage extends StatelessWidget {
           onDestinationSelected: (index) {
             switch (index) {
               case 0:
-                context.go('/home');
+                context.go('/maps');
                 break;
               case 1:
-                context.go('/location');
+                context.go('/invitations');
                 break;
               case 2:
-                context.go('/family');
+                context.go('/profile');
                 break;
             }
           },
