@@ -219,39 +219,36 @@ class _MapaPageState extends State<MapaPage> {
         FamilyMap(
           members: _members,
           cartoApiKey: AppConfig.cartoApiKey,
-          onViewFullHistory: (member) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => LocationHistoryPage(
-                  memberName: member.name,
-                  initials: member.initials,
-                  color: member.color,
-                  points: [
-                    LocationPoint(
-                      latitude: 4.7110,
-                      longitude: -74.0721,
-                      recordedAt: DateTime.now().subtract(
-                        const Duration(hours: 6),
-                      ),
-                    ),
-                    LocationPoint(
-                      latitude: 4.7080,
-                      longitude: -74.0700,
-                      recordedAt: DateTime.now().subtract(
-                        const Duration(hours: 5, minutes: 15),
-                      ),
-                    ),
-                    LocationPoint(
-                      latitude: 4.7050,
-                      longitude: -74.0650,
-                      recordedAt: DateTime.now().subtract(
-                        const Duration(hours: 5),
-                      ),
-                    ),
-                  ],
+          onViewFullHistory: (member) async {
+            try {
+              final points = await _locationRepository.getDeviceHistory(
+                member.deviceId,
+              );
+
+              if (!mounted) return;
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => LocationHistoryPage(
+                    memberName: member.name,
+                    initials: member.initials,
+                    color: member.color,
+                    cartoApiKey: AppConfig.cartoApiKey,
+                    points: points.reversed
+                        .map(
+                          (p) => LocationPoint(
+                            latitude: p.latitude,
+                            longitude: p.longitude,
+                            recordedAt: p.recordedAt,
+                          ),
+                        )
+                        .toList(),
+                  ),
                 ),
-              ),
-            );
+              );
+            } catch (e) {
+              debugPrint('Error cargando historial: $e');
+            }
           },
         ),
         SafeArea(

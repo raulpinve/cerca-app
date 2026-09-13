@@ -10,6 +10,7 @@ MemberLocation toMemberLocation(MemberLocationResponse res) {
 
   return MemberLocation(
     id: res.userId,
+    deviceId: res.deviceId,
     name: fullName,
     initials: _getInitials(res.firstName, res.lastName),
     position: LatLng(res.latitude, res.longitude),

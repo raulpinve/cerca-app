@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/features/location/data/models/location_history_point.dart';
 import 'package:app/features/location/data/models/member_location_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -63,10 +64,35 @@ class LocationRepository {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
       final data = json['data'] as List;
-      debugPrint('Respuesta cruda: $data'); // <- agrega esto
+      debugPrint('Respuesta cruda: $data');
       return data.map((e) => MemberLocationResponse.fromJson(e)).toList();
     } else {
       throw Exception('Error al obtener ubicaciones: ${response.statusCode}');
+    }
+  }
+
+  Future<List<LocationHistoryPoint>> getDeviceHistory(
+    String deviceId, {
+    int limit = 20,
+  }) async {
+    final token = await _authTokenProvider.getIdToken();
+    if (token == null) throw Exception('No hay usuario autenticado');
+
+    final url = Uri.parse(
+      '${AppConfig.apiHost}/locations/devices/$deviceId/history?limit=$limit',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final data = json['data'] as List;
+      return data.map((e) => LocationHistoryPoint.fromJson(e)).toList();
+    } else {
+      throw Exception('Error al obtener historial: ${response.statusCode}');
     }
   }
 }

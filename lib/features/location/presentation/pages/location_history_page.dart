@@ -144,6 +144,7 @@ class LocationHistoryPage extends StatefulWidget {
   final String memberName;
   final String initials;
   final Color color;
+  final String cartoApiKey;
 
   /// Puntos crudos, ordenados de más viejo a más nuevo.
   /// Si tu API los devuelve DESC (como getDeviceLocationHistory), invertí
@@ -156,6 +157,7 @@ class LocationHistoryPage extends StatefulWidget {
     required this.initials,
     required this.color,
     required this.points,
+    required this.cartoApiKey,
   });
 
   @override
@@ -200,6 +202,7 @@ class _LocationHistoryPageState extends State<LocationHistoryPage> {
                     child: _MiniTrailMap(
                       points: widget.points,
                       color: widget.color,
+                      cartoApiKey: widget.cartoApiKey,
                     ),
                   ),
                 ),
@@ -304,28 +307,48 @@ class _Header extends StatelessWidget {
 class _MiniTrailMap extends StatelessWidget {
   final List<LocationPoint> points;
   final Color color;
+  final String cartoApiKey;
 
-  const _MiniTrailMap({required this.points, required this.color});
+  const _MiniTrailMap({
+    required this.points,
+    required this.color,
+    required this.cartoApiKey,
+  });
 
   @override
   Widget build(BuildContext context) {
     final trail = points.map((p) => p.position).toList();
+    final uniquePoints = trail
+        .toSet()
+        .length; // cuántas posiciones distintas hay
 
     return FlutterMap(
       options: MapOptions(
-        initialCameraFit: CameraFit.coordinates(
-          coordinates: trail,
-          padding: const EdgeInsets.all(24),
-        ),
+        // Si solo hay 1 posición única, usa centro+zoom fijo en vez de CameraFit
+        initialCenter: uniquePoints <= 1 ? trail.first : const LatLng(0, 0),
+        initialZoom: uniquePoints <= 1 ? 15 : 13,
+        initialCameraFit: uniquePoints > 1
+            ? CameraFit.coordinates(
+                coordinates: trail,
+                padding: const EdgeInsets.all(24),
+              )
+            : null,
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.none,
         ),
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', // agregale ?key= como en FamilyMap
-          subdomains: const ['a', 'b', 'c', 'd'],
-          userAgentPackageName: 'com.tuapp.cerca',
+        ColorFiltered(
+          colorFilter: const ColorFilter.mode(
+            Color(0x06B5673A),
+            BlendMode.srcATop,
+          ),
+          child: TileLayer(
+            urlTemplate:
+                'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=$cartoApiKey',
+            subdomains: const ['a', 'b', 'c', 'd'],
+            userAgentPackageName: 'com.tuapp.cerca',
+          ),
         ),
         if (trail.length > 1)
           PolylineLayer(

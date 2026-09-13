@@ -5,26 +5,24 @@ import 'package:latlong2/latlong.dart' show LatLng;
 
 /// Ubicación de un miembro para pintar en el mapa, con su recorrido reciente.
 class MemberLocation {
-  final String id;
+  final String id; // userId - para navegar a perfil en el futuro
+  final String deviceId; // deviceId - para pedir historial de ubicaciones
   final String name;
   final String initials;
   final LatLng position;
   final Color color;
   final String lastSeenText;
-
-  /// Puntos del recorrido reciente (de más viejo a más nuevo), para dibujar
-  /// la línea de trayecto cuando se selecciona a este miembro.
-  /// Viene de tu tabla location_history.
   final List<LatLng> recentTrail;
 
-  const MemberLocation({
+  MemberLocation({
     required this.id,
+    required this.deviceId,
     required this.name,
     required this.initials,
     required this.position,
     required this.color,
     required this.lastSeenText,
-    this.recentTrail = const [],
+    required this.recentTrail,
   });
 }
 
