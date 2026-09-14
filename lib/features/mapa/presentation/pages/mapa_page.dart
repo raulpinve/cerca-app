@@ -861,11 +861,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
                       icon: Icons.person_add_outlined,
                       onTap: activeCircleId != null ? _showInviteDialog : null,
                     ),
-                    const SizedBox(width: 8),
-                    CircleIconButton(
-                      icon: Icons.add,
-                      onTap: _showCreateCircleDialog,
-                    ),
                   ],
                 ),
               ],

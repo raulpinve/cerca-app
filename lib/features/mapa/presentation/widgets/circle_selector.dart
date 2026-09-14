@@ -46,7 +46,7 @@ class StackedAvatars extends StatelessWidget {
                 radius: size / 2,
                 backgroundColor: const Color(
                   0xFFE9C9A0,
-                ), // color por miembro, no del tema
+                ),
                 child: Text(
                   initials[i],
                   style: TextStyle(
@@ -117,7 +117,6 @@ class CircleChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // ITEM DE LA LISTA DE CÍRCULOS (dentro del selector desplegado)
 // ---------------------------------------------------------------------------
-
 class CircleListItem extends StatelessWidget {
   final Circle circle;
   final bool isActive;
@@ -183,7 +182,6 @@ class CircleListItem extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // CONTENIDO DEL SELECTOR DESPLEGADO (lista + crear + unirse con código)
 // ---------------------------------------------------------------------------
-
 class CircleSelectorSheet extends StatelessWidget {
   final List<Circle> circles;
   final String activeCircleId;
@@ -243,7 +241,6 @@ class CircleSelectorSheet extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // FUNCIÓN QUE ABRE EL SELECTOR (llamar desde donde tengas el CircleChip)
 // ---------------------------------------------------------------------------
-
 void showCircleSelector(
   BuildContext context, {
   required List<Circle> circles,

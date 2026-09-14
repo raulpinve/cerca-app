@@ -31,12 +31,8 @@ class FamilyMap extends StatefulWidget {
   final LatLng initialCenter;
   final MapController? controller;
 
-  /// Conseguila gratis (sin cola de aprobación) en:
-  /// https://carto.com/basemaps/apikey/
   final String cartoApiKey;
 
-  /// Se llama cuando el usuario toca "Ver historial completo" en el popup.
-  /// Si no lo pasás, ese botón no aparece.
   final void Function(MemberLocation member)? onViewFullHistory;
 
   const FamilyMap({
