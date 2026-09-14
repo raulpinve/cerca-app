@@ -2,6 +2,7 @@ import 'package:app/core/theme/app_colors.dart';
 import 'package:app/features/invitations/data/models/circle_invitation.dart';
 import 'package:app/features/invitations/data/repositories/invitation_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:app/features/invitations/data/invitations_badge_notifier.dart';
 
 class InvitationsPage extends StatefulWidget {
   const InvitationsPage({super.key});
@@ -54,6 +55,8 @@ class _InvitationsPageState extends State<InvitationsPage> {
           _invitations.removeWhere((i) => i.id == invitation.id);
           _processingIds.remove(invitation.id);
         });
+
+        invitationsBadgeNotifier.refresh();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

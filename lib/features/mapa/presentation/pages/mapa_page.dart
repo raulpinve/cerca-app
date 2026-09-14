@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:app/features/mapa/data/mappers/member_location_mapper.dart';
-import 'package:app/features/invitations/presentation/pages/invitations_page.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 
 class MapaPage extends StatefulWidget {
@@ -727,18 +726,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
                     CircleIconButton(
                       icon: Icons.add,
                       onTap: _showCreateCircleDialog,
-                    ),
-                    const SizedBox(width: 8),
-                    CircleIconButton(
-                      icon: Icons.notifications_outlined,
-                      onTap: () async {
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const InvitationsPage(),
-                          ),
-                        );
-                        _loadCircles();
-                      },
                     ),
                   ],
                 ),

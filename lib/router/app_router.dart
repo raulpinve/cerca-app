@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/features/invitations/data/invitations_badge_notifier.dart';
 import 'package:app/features/auth/presentation/pages/login.dart';
 import 'package:app/features/invitations/presentation/pages/invitations_page.dart';
 import 'package:app/features/mapa/presentation/pages/mapa_page.dart';
@@ -61,7 +62,15 @@ final GoRouter appRouter = GoRouter(
 
     ShellRoute(
       builder: (context, state, child) {
-        return MainNavigationPage(child: child);
+        return AnimatedBuilder(
+          animation: invitationsBadgeNotifier,
+          builder: (context, _) {
+            return MainNavigationPage(
+              pendingInvites: invitationsBadgeNotifier.count,
+              child: child,
+            );
+          },
+        );
       },
       routes: [
         GoRoute(
