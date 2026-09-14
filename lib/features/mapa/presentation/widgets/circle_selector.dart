@@ -4,25 +4,27 @@ import 'package:app/core/theme/app_colors.dart';
 // ---------------------------------------------------------------------------
 // MODELO
 // ---------------------------------------------------------------------------
-
 class Circle {
   final String id;
   final String name;
   final int memberCount;
   final List<String> memberInitials;
+  final String role;
 
   const Circle({
     required this.id,
     required this.name,
     required this.memberCount,
     required this.memberInitials,
+    required this.role,
   });
+
+  bool get isOwner => role == 'owner';
 }
 
 // ---------------------------------------------------------------------------
 // AVATARES APILADOS (usado por el chip y por cada fila de la lista)
 // ---------------------------------------------------------------------------
-
 class StackedAvatars extends StatelessWidget {
   final List<String> initials;
   final double size;
@@ -120,12 +122,14 @@ class CircleListItem extends StatelessWidget {
   final Circle circle;
   final bool isActive;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const CircleListItem({
     super.key,
     required this.circle,
     required this.isActive,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -135,6 +139,7 @@ class CircleListItem extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -185,6 +190,7 @@ class CircleSelectorSheet extends StatelessWidget {
   final ValueChanged<String> onCircleSelected;
   final VoidCallback onCreateCircle;
   final VoidCallback onJoinWithCode;
+  final void Function(Circle circle)? onLongPressCircle;
 
   const CircleSelectorSheet({
     super.key,
@@ -193,6 +199,7 @@ class CircleSelectorSheet extends StatelessWidget {
     required this.onCircleSelected,
     required this.onCreateCircle,
     required this.onJoinWithCode,
+    this.onLongPressCircle,
   });
 
   @override
@@ -217,6 +224,9 @@ class CircleSelectorSheet extends StatelessWidget {
               circle: c,
               isActive: c.id == activeCircleId,
               onTap: () => onCircleSelected(c.id),
+              onLongPress: onLongPressCircle != null
+                  ? () => onLongPressCircle!(c)
+                  : null,
             ),
           Divider(height: 1, color: colors.border),
           ListTile(
@@ -240,6 +250,7 @@ void showCircleSelector(
   required String activeCircleId,
   required ValueChanged<String> onCircleSelected,
   required VoidCallback onCreateCircle,
+  void Function(Circle circle)? onLongPressCircle,
 }) {
   final colors = context.appColors;
 
@@ -270,6 +281,14 @@ void showCircleSelector(
                 onCreateCircle();
               },
               onJoinWithCode: () => Navigator.of(context).pop(),
+              onLongPressCircle: onLongPressCircle != null
+                  ? (circle) {
+                      Navigator.of(context).pop(); // cierra el selector primero
+                      onLongPressCircle(
+                        circle,
+                      ); // luego dispara la acción (mostrar diálogo)
+                    }
+                  : null,
             ),
           ),
         ),

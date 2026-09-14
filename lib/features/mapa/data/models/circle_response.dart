@@ -3,12 +3,14 @@ class CircleResponse {
   final String name;
   final int memberCount;
   final List<String> memberInitials;
+  final String role;
 
   CircleResponse({
     required this.id,
     required this.name,
     required this.memberCount,
     required this.memberInitials,
+    required this.role,
   });
 
   factory CircleResponse.fromJson(Map<String, dynamic> json) {
@@ -19,6 +21,7 @@ class CircleResponse {
       memberInitials: (json['memberInitials'] as List)
           .map((e) => e as String)
           .toList(),
+      role: json['role'] as String? ?? 'member',
     );
   }
 

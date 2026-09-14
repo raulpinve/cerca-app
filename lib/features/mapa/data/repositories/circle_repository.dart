@@ -49,4 +49,45 @@ class CircleRepository {
       throw Exception('Error al crear círculo: ${response.statusCode}');
     }
   }
+
+  Future<void> leaveCircle(String circleId) async {
+    final token = await _authTokenProvider.getIdToken();
+    if (token == null) throw Exception('No hay usuario autenticado');
+
+    final url = Uri.parse('${AppConfig.apiHost}/circles/$circleId/members/me');
+
+    final response = await http.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(_extractErrorMessage(response.body));
+    }
+  }
+
+  Future<void> deleteCircle(String circleId) async {
+    final token = await _authTokenProvider.getIdToken();
+    if (token == null) throw Exception('No hay usuario autenticado');
+
+    final url = Uri.parse('${AppConfig.apiHost}/circles/$circleId');
+
+    final response = await http.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(_extractErrorMessage(response.body));
+    }
+  }
+
+  String _extractErrorMessage(String body) {
+    try {
+      final json = jsonDecode(body);
+      return json['message'] as String? ?? 'Ocurrió un error';
+    } catch (_) {
+      return 'Ocurrió un error';
+    }
+  }
 }

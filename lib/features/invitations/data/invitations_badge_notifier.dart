@@ -14,9 +14,9 @@ class InvitationsBadgeNotifier extends ChangeNotifier {
   StreamSubscription<User?>? _authSubscription;
 
   InvitationsBadgeNotifier() {
-    debugPrint('InvitationsBadgeNotifier creado'); // <- agrega esto
+    debugPrint('InvitationsBadgeNotifier creado');
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
-      debugPrint('Auth state changed: ${user?.uid}'); // <- y esto
+      debugPrint('Auth state changed: ${user?.uid}');
       if (user != null) {
         refresh();
         _startPolling();
@@ -45,7 +45,7 @@ class InvitationsBadgeNotifier extends ChangeNotifier {
       final invitations = await _invitationRepository.getMyPendingInvitations();
       debugPrint(
         'Invitaciones pendientes encontradas: ${invitations.length}',
-      ); // <- agrega esto
+      );
       _count = invitations.length;
       notifyListeners();
     } catch (e) {

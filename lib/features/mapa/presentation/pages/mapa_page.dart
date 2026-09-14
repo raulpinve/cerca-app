@@ -91,6 +91,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
               name: r.name,
               memberCount: r.memberCount,
               memberInitials: r.memberInitials,
+              role: r.role,
             ),
           )
           .toList();
@@ -466,6 +467,113 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showLeaveOrDeleteDialog(Circle circle) async {
+    final colors = context.appColors;
+    final isOwner = circle.isOwner;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isOwner
+                    ? 'Eliminar "${circle.name}"'
+                    : 'Salir de "${circle.name}"',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isOwner
+                    ? 'Esto elimina el círculo para todos los miembros. No se puede deshacer.'
+                    : '¿Seguro que quieres salir de este círculo?',
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(color: colors.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.pop(context, true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isOwner ? 'Eliminar' : 'Salir',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      await _leaveOrDeleteCircle(circle);
+    }
+  }
+
+  Future<void> _leaveOrDeleteCircle(Circle circle) async {
+    try {
+      if (circle.isOwner) {
+        await _circleRepository.deleteCircle(circle.id);
+      } else {
+        await _circleRepository.leaveCircle(circle.id);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              circle.isOwner ? 'Círculo eliminado' : 'Saliste del círculo',
+            ),
+          ),
+        );
+      }
+
+      await _loadCircles(); // recarga la lista completa
+    } catch (e) {
+      debugPrint('Error al salir/eliminar círculo: $e');
+      if (mounted) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -707,6 +815,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
                     circles: _circles,
                     activeCircleId: activeCircleId!,
                     onCreateCircle: _showCreateCircleDialog,
+                    onLongPressCircle: _showLeaveOrDeleteDialog,
                     onCircleSelected: (id) {
                       setState(() {
                         activeCircleId = id;
