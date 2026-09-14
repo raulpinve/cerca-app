@@ -1,5 +1,6 @@
 import 'package:app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 // ---------------------------------------------------------------------------
 // MODELOS (mapean a tus tablas users y devices)
@@ -91,7 +92,7 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 20),
             _SignOutButton(
               onTap: () {
-                // TODO: cerrar sesión con Firebase Auth y volver a /login
+                FlutterBackgroundService().invoke('stopService');
               },
             ),
           ],

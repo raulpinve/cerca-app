@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_colors.dart';
 import 'package:app/core/services/app_location_controller.dart';
@@ -21,12 +22,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void initState() {
     super.initState();
-    AppLocationController.instance.start();
+    _startSharing();
+  }
+
+  Future<void> _startSharing() async {
+    final service = FlutterBackgroundService();
+    if (!(await service.isRunning())) {
+      await service.startService();
+    }
   }
 
   @override
   void dispose() {
-    AppLocationController.instance.stop();
+    // Ya NO llamamos stopService() aquí.
+    // El servicio debe seguir vivo aunque este widget se destruya.
     super.dispose();
   }
 
