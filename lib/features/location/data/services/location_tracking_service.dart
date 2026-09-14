@@ -44,8 +44,13 @@ class LocationTrackingService {
     }
 
     if (permission == LocationPermission.whileInUse) {
-      permission =
-          await Geolocator.requestPermission(); // pide "Allow all the time"
+      // Intentamos subir a "always", pero sin perder el whileInUse
+      // ya válido si el sistema no concede el upgrade (o lo rechaza).
+      final upgraded = await Geolocator.requestPermission();
+      if (upgraded == LocationPermission.always) {
+        permission = upgraded;
+      }
+      // si no se concede el upgrade, seguimos con whileInUse (sigue siendo válido)
     }
 
     return permission == LocationPermission.always ||

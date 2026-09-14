@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/auth/auth_token_provider.dart';
 
+class DeviceNotFoundException implements Exception {}
+
 class LocationRepository {
   final _authTokenProvider = AuthTokenProvider();
 
@@ -37,6 +39,14 @@ class LocationRepository {
           'accuracyM': accuracyM,
         }),
       );
+
+      if (response.statusCode == 404) {
+        throw DeviceNotFoundException();
+      } else if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint(
+          'Error al enviar ubicación: ${response.statusCode} ${response.body}',
+        );
+      }
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint(

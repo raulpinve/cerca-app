@@ -63,4 +63,9 @@ class DeviceRepository {
   Future<String> _getDeviceName() async {
     return Platform.isAndroid ? 'Android device' : 'iPhone';
   }
+
+  Future<void> clearSavedDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_deviceIdKey);
+  }
 }

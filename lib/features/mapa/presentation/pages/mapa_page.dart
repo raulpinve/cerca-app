@@ -32,6 +32,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   final _circleRepository = CircleRepository();
   final _mapController = MapController();
   final _invitationRepository = InvitationRepository();
+  bool _isReregisteringDevice = false;
   LocationPermission? _permissionStatus;
 
   bool _hasCenteredOnce = false;
@@ -301,18 +302,38 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   void _onOwnLocationUpdate(Position position) async {
     if (_deviceId == null) return;
 
-    // 1. Actualiza tu propio pin de inmediato, sin esperar al backend
     _updateOwnMemberLocally(position);
 
-    // 2. Envía al backend (para que los demás te vean, y quede en el historial)
-    await _locationRepository.updateMyLocation(
-      deviceId: _deviceId!,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      accuracyM: position.accuracy,
-    );
-
-    debugPrint('Enviado: ${position.latitude}, ${position.longitude}');
+    try {
+      await _locationRepository.updateMyLocation(
+        deviceId: _deviceId!,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyM: position.accuracy,
+      );
+      debugPrint('Enviado: ${position.latitude}, ${position.longitude}');
+    } on DeviceNotFoundException {
+      if (_isReregisteringDevice)
+        return; // ya hay un re-registro en curso, ignora este intento
+      _isReregisteringDevice = true;
+      try {
+        debugPrint('Device no reconocido por backend, re-registrando...');
+        await _deviceRepository.clearSavedDeviceId();
+        _deviceId = await _deviceRepository.getOrRegisterDeviceId();
+        await _locationRepository.updateMyLocation(
+          deviceId: _deviceId!,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracyM: position.accuracy,
+        );
+      } catch (e) {
+        debugPrint('Error al re-registrar dispositivo: $e');
+      } finally {
+        _isReregisteringDevice = false;
+      }
+    } catch (e) {
+      debugPrint('Error inesperado al enviar ubicación: $e');
+    }
   }
 
   void _updateOwnMemberLocally(Position position) {
@@ -658,6 +679,15 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
               );
             } catch (e) {
               debugPrint('Error cargando historial: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'No se pudo cargar el historial de este miembro',
+                    ),
+                  ),
+                );
+              }
             }
           },
         ),

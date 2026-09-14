@@ -83,8 +83,7 @@ class _FamilyMapState extends State<FamilyMap> {
                 urlTemplate:
                     'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${widget.cartoApiKey}',
                 subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName:
-                    'com.tuapp.cerca', // poné tu applicationId real
+                userAgentPackageName: 'com.tuapp.cerca',
               ),
             ),
 
