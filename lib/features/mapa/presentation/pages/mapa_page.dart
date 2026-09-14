@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:app/core/config/app_config.dart';
+import 'package:app/core/services/app_location_controller.dart';
 import 'package:app/core/theme/app_colors.dart';
 import 'package:app/features/invitations/data/repositories/invitation_repository.dart';
-import 'package:app/features/location/data/repositories/device_repository.dart';
 import 'package:app/features/location/data/repositories/location_repository.dart';
-import 'package:app/features/location/data/services/location_tracking_service.dart';
 import 'package:app/features/location/presentation/pages/location_history_page.dart';
 import 'package:app/features/mapa/data/repositories/circle_repository.dart';
 import 'package:app/features/mapa/presentation/widgets/circle_selector.dart';
@@ -26,17 +25,15 @@ class MapaPage extends StatefulWidget {
 class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   List<MemberLocation> _members = [];
   Timer? _refreshTimer;
-  final _locationService = LocationTrackingService();
+  StreamSubscription<Position>? _positionSub;
   final _locationRepository = LocationRepository();
-  final _deviceRepository = DeviceRepository();
   final _circleRepository = CircleRepository();
   final _mapController = MapController();
   final _invitationRepository = InvitationRepository();
-  bool _isReregisteringDevice = false;
   LocationPermission? _permissionStatus;
 
   bool _hasCenteredOnce = false;
-  String? _deviceId;
+  String? get _deviceId => AppLocationController.instance.deviceId;
 
   List<Circle> _circles = [];
   String? activeCircleId;
@@ -52,9 +49,12 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initDeviceAndTracking();
     _checkPermissionStatus();
     _loadCircles();
+
+    _positionSub = AppLocationController.instance.positionStream.listen(
+      _updateOwnMemberLocally,
+    );
 
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 15),
@@ -67,7 +67,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _locationService.stop();
+    _positionSub?.cancel();
     _refreshTimer?.cancel();
     super.dispose();
   }
@@ -258,30 +258,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initDeviceAndTracking() async {
-    try {
-      _deviceId = await _deviceRepository.getOrRegisterDeviceId();
-      debugPrint('Device ID: $_deviceId');
-    } catch (e) {
-      debugPrint('Error registrando dispositivo: $e');
-      return; // sin deviceId no arrancamos el tracking
-    }
-
-    await _startLocationTracking();
-  }
-
-  Future<void> _startLocationTracking() async {
-    final started = await _locationService.start(
-      onUpdate: _onOwnLocationUpdate,
-    );
-
-    debugPrint('¿Tracking iniciado?: $started');
-
-    if (!started && mounted) {
-      debugPrint('No se pudieron iniciar los permisos de ubicación');
-    }
-  }
-
   void _centerOnMyLocation() {
     if (_deviceId == null) return;
 
@@ -296,43 +272,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
       _mapController.move(myMember.position, 15);
     } catch (e) {
       debugPrint('No se pudo centrar: aún no hay tu ubicación cargada');
-    }
-  }
-
-  void _onOwnLocationUpdate(Position position) async {
-    if (_deviceId == null) return;
-
-    _updateOwnMemberLocally(position);
-
-    try {
-      await _locationRepository.updateMyLocation(
-        deviceId: _deviceId!,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracyM: position.accuracy,
-      );
-      debugPrint('Enviado: ${position.latitude}, ${position.longitude}');
-    } on DeviceNotFoundException {
-      if (_isReregisteringDevice)
-        return; // ya hay un re-registro en curso, ignora este intento
-      _isReregisteringDevice = true;
-      try {
-        debugPrint('Device no reconocido por backend, re-registrando...');
-        await _deviceRepository.clearSavedDeviceId();
-        _deviceId = await _deviceRepository.getOrRegisterDeviceId();
-        await _locationRepository.updateMyLocation(
-          deviceId: _deviceId!,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          accuracyM: position.accuracy,
-        );
-      } catch (e) {
-        debugPrint('Error al re-registrar dispositivo: $e');
-      } finally {
-        _isReregisteringDevice = false;
-      }
-    } catch (e) {
-      debugPrint('Error inesperado al enviar ubicación: $e');
     }
   }
 

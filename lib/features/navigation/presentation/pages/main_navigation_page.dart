@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_colors.dart';
+import 'package:app/core/services/app_location_controller.dart';
 
-class MainNavigationPage extends StatelessWidget {
+class MainNavigationPage extends StatefulWidget {
   final Widget child;
   final int pendingInvites;
 
@@ -11,6 +12,23 @@ class MainNavigationPage extends StatelessWidget {
     required this.child,
     this.pendingInvites = 0,
   });
+
+  @override
+  State<MainNavigationPage> createState() => _MainNavigationPageState();
+}
+
+class _MainNavigationPageState extends State<MainNavigationPage> {
+  @override
+  void initState() {
+    super.initState();
+    AppLocationController.instance.start();
+  }
+
+  @override
+  void dispose() {
+    AppLocationController.instance.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +44,7 @@ class MainNavigationPage extends StatelessWidget {
     }
 
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: colors.border, width: 0.5)),
@@ -64,14 +82,14 @@ class MainNavigationPage extends StatelessWidget {
             NavigationDestination(
               icon: Badge(
                 backgroundColor: colors.badge,
-                isLabelVisible: pendingInvites > 0,
-                label: Text('$pendingInvites'),
+                isLabelVisible: widget.pendingInvites > 0,
+                label: Text('${widget.pendingInvites}'),
                 child: Icon(Icons.mail_outline, color: colors.unselected),
               ),
               selectedIcon: Badge(
                 backgroundColor: colors.badge,
-                isLabelVisible: pendingInvites > 0,
-                label: Text('$pendingInvites'),
+                isLabelVisible: widget.pendingInvites > 0,
+                label: Text('${widget.pendingInvites}'),
                 child: Icon(Icons.mail, color: colors.selected),
               ),
               label: 'Invitaciones',
