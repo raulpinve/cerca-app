@@ -84,7 +84,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
 
     try {
       final responses = await _circleRepository.getMyCircles();
-
       final circles = responses
           .map(
             (r) => Circle(
@@ -530,8 +529,8 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
       }
     }
   }
-  // Métodos para zoom, junto a _centerOnMyLocation
 
+  // Métodos para zoom, junto a _centerOnMyLocation
   void _zoomIn() {
     final camera = _mapController.camera;
     _mapController.move(camera.center, camera.zoom + 1);

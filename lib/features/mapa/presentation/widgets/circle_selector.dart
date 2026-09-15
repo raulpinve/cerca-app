@@ -65,7 +65,6 @@ class StackedAvatars extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // CHIP DEL HEADER (lo que se ve en MapaPage, tocarlo abre el selector)
 // ---------------------------------------------------------------------------
-
 class CircleChip extends StatelessWidget {
   final Circle circle;
   final VoidCallback onTap;
@@ -75,7 +74,6 @@ class CircleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,

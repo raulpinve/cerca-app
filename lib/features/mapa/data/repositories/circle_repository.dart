@@ -23,7 +23,6 @@ class CircleRepository {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
       final data = json['data'] as List;
-      debugPrint('Círculos crudos: $data');
       return data.map((e) => CircleResponse.fromJson(e)).toList();
     } else {
       throw Exception('Error al obtener círculos: ${response.statusCode}');

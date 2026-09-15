@@ -115,7 +115,6 @@ class DeviceRepository {
   }
 
   Future<Device> _registerDevice() async {
-    debugPrint('Hardware ID: ${await _getHardwareId()}');
     final token = await _getToken();
     if (token == null) {
       throw AuthenticationException('No hay usuario autenticado');
