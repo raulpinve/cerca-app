@@ -3,6 +3,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_colors.dart';
 import 'package:app/core/services/app_location_controller.dart';
+import 'package:app/features/location/data/services/location_tracking_service.dart';
 
 class MainNavigationPage extends StatefulWidget {
   final Widget child;
@@ -26,6 +27,29 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   Future<void> _startSharing() async {
+    // Pedimos el permiso ACÁ, en el isolate principal (con Activity
+    // disponible), antes de arrancar el background service. Si esto se
+    // hiciera dentro del isolate del servicio, truena con
+    // ActivityMissingException.
+    final locationService = LocationTrackingService();
+    final granted = await locationService.requestPermissions();
+
+    if (!granted) {
+      debugPrint(
+        'Permiso de ubicación no concedido, no se inicia el tracking.',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Necesitas dar permiso de ubicación para compartir tu ubicación con tu familia.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     final service = FlutterBackgroundService();
     if (!(await service.isRunning())) {
       await service.startService();

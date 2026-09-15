@@ -58,8 +58,16 @@ class LocationTrackingService {
   }
 
   Future<bool> start({required void Function(Position) onUpdate}) async {
-    final granted = await requestPermissions();
-    if (!granted) return false;
+    final permission =
+        await Geolocator.checkPermission(); // solo CHEQUEA, no pide
+    final granted =
+        permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+
+    if (!granted) {
+      debugPrint('Sin permiso de ubicación, no se puede iniciar tracking');
+      return false;
+    }
 
     _positionStream =
         Geolocator.getPositionStream(

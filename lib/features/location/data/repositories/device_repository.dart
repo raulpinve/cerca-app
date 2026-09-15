@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app/core/config/app_config.dart';
@@ -23,8 +24,12 @@ class DeviceRepository {
 
   Future<String> getOrRegisterDeviceId() async {
     final saved = await getSavedDeviceId();
+    debugPrint('DeviceId guardado localmente: $saved');
     if (saved != null) return saved;
 
+    debugPrint(
+      'No hay deviceId guardado, registrando uno nuevo...',
+    );
     final device = await _registerDevice();
     await _saveDeviceId(device.id);
     return device.id;
@@ -32,11 +37,15 @@ class DeviceRepository {
 
   Future<Device> _registerDevice() async {
     final token = await _authTokenProvider.getIdToken();
+    debugPrint(
+      'Token obtenido: ${token != null ? "sí (${token.substring(0, 10)}...)" : "NULL"}',
+    ); // 👈
     if (token == null) {
       throw Exception('No hay usuario autenticado');
     }
 
     final url = Uri.parse('${AppConfig.apiHost}/devices');
+    debugPrint('POST a: $url');
 
     final response = await http.post(
       url,
@@ -49,6 +58,9 @@ class DeviceRepository {
         'platform': Platform.isAndroid ? 'android' : 'ios',
       }),
     );
+
+    debugPrint('Status code: ${response.statusCode}');
+    debugPrint('Response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final json = jsonDecode(response.body);

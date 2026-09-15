@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:app/core/services/app_location_controller.dart';
+import 'package:app/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -57,6 +59,12 @@ Future<void> initBackgroundService() async {
 @pragma('vm:entry-point')
 void _onServiceStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
+
+  // 👇 Necesario: este código corre en su propio isolate,
+  // que no comparte el Firebase.initializeApp() del isolate principal.
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   final controller = AppLocationController.instance;
   await controller.start();

@@ -45,15 +45,10 @@ class _LoginPageState extends State<LoginPage> {
       if (idToken == null) {
         throw Exception('No se pudo obtener el token de Firebase.');
       }
-
-      print('UID: ${user.uid}');
-      print('Nombre: ${user.displayName}');
-      print('Email: ${user.email}');
-      print('ID Token length: ${idToken.length}');
     } on FirebaseAuthException catch (e) {
-      print('Error Firebase: ${e.message}');
+      debugPrint('Error Firebase: ${e.message}');
     } catch (e) {
-      print('Error al iniciar sesión: $e');
+      debugPrint('Error al iniciar sesión: $e');
     } finally {
       if (mounted) {
         setState(() {

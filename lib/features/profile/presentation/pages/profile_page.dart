@@ -1,13 +1,21 @@
 import 'dart:convert';
 
 import 'package:app/core/theme/app_colors.dart';
-// Ajusta esta ruta a donde tengas tu AppConfig real:
-// class AppConfig { static const String apiHost = 'http://10.0.2.2:3000'; }
 import 'package:app/core/config/app_config.dart';
+import 'package:app/features/auth/presentation/pages/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+// Repositorio real que registra el dispositivo y guarda su id localmente
+// (lib/features/location/data/repositories/device_repository.dart).
+// Se importa con alias porque su nombre de clase (DeviceRepository) choca
+// con el DeviceRepository que se define más abajo en este mismo archivo,
+// el cual solo lista/desactiva/elimina dispositivos desde el perfil.
+import 'package:app/features/location/data/repositories/device_repository.dart'
+    as location_repo;
 
 // ---------------------------------------------------------------------------
 // MODELOS (mapean a tus tablas users y devices)
@@ -165,6 +173,26 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+// Como _unwrap, pero para respuestas donde no nos importa el 'data'
+// (delete/deactivate), y toleramos body vacío.
+void _unwrapVoid(http.Response response) {
+  if (response.statusCode == 401) {
+    throw ApiException('Sesión expirada, vuelve a iniciar sesión.');
+  }
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw ApiException('Error del servidor (${response.statusCode}).');
+  }
+  if (response.body.isEmpty) return;
+  try {
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['success'] == false) {
+      throw ApiException(body['message']?.toString() ?? 'Error desconocido.');
+    }
+  } catch (_) {
+    // Respuesta exitosa pero sin JSON (o no parseable): la ignoramos.
+  }
+}
+
 class DeviceRepository {
   Future<List<Device>> fetchDevices() async {
     final headers = await _authHeaders();
@@ -182,6 +210,34 @@ class DeviceRepository {
     return rawList
         .map((item) => Device.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> deactivateDevice(String deviceId) async {
+    final headers = await _authHeaders();
+    late final http.Response response;
+    try {
+      response = await http.patch(
+        Uri.parse('${AppConfig.apiHost}/devices/$deviceId/deactivate'),
+        headers: headers,
+      );
+    } catch (_) {
+      throw ApiException('No hay conexión con el servidor.');
+    }
+    _unwrapVoid(response);
+  }
+
+  Future<void> deleteDevice(String deviceId) async {
+    final headers = await _authHeaders();
+    late final http.Response response;
+    try {
+      response = await http.delete(
+        Uri.parse('${AppConfig.apiHost}/devices/$deviceId'),
+        headers: headers,
+      );
+    } catch (_) {
+      throw ApiException('No hay conexión con el servidor.');
+    }
+    _unwrapVoid(response);
   }
 }
 
@@ -212,6 +268,8 @@ class _ProfilePageState extends State<ProfilePage>
   late final AnimationController _entranceController;
   final _deviceRepository = DeviceRepository();
   final _userRepository = UserRepository();
+  // Repositorio real de registro/persistencia del device_id local.
+  final _locationDeviceRepository = location_repo.DeviceRepository();
 
   _LoadState _state = _LoadState.loading;
   List<Device> _devices = [];
@@ -221,6 +279,11 @@ class _ProfilePageState extends State<ProfilePage>
   AppUser? _user;
   String? _userErrorMessage;
 
+  // Id del dispositivo desde el que se está usando la app ahora mismo.
+  // Se carga de forma asíncrona, así que puede ser null momentáneamente
+  // mientras arranca la pantalla.
+  String? _currentDeviceId;
+
   @override
   void initState() {
     super.initState();
@@ -228,6 +291,7 @@ class _ProfilePageState extends State<ProfilePage>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
+    _loadCurrentDeviceId();
     _loadUser();
     _loadDevices();
   }
@@ -237,6 +301,15 @@ class _ProfilePageState extends State<ProfilePage>
     _entranceController.dispose();
     super.dispose();
   }
+
+  Future<void> _loadCurrentDeviceId() async {
+    final id = await _locationDeviceRepository.getSavedDeviceId();
+    if (!mounted) return;
+    setState(() => _currentDeviceId = id);
+  }
+
+  bool _isCurrentDevice(Device device) =>
+      _currentDeviceId != null && device.id == _currentDeviceId;
 
   Future<void> _loadUser() async {
     setState(() => _userState = _LoadState.loading);
@@ -356,6 +429,258 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
+  Future<void> _confirmSignOut() async {
+    final colors = context.appColors;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '¿Cerrar sesión?',
+          style: TextStyle(color: colors.textPrimary),
+        ),
+        content: Text(
+          'Tendrás que volver a iniciar sesión para usar la app.',
+          style: TextStyle(color: colors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: colors.textSecondary),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC15C4A),
+            ),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await _signOut();
+  }
+
+  Future<void> _signOut() async {
+    try {
+      FlutterBackgroundService().invoke('stopService');
+    } catch (_) {
+      // Si el background service ya no corría, no es un error fatal.
+    }
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // Puede fallar si nunca hubo sesión de Google activa; seguimos igual.
+    }
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {
+      // Aunque falle, igual sacamos al usuario de la pantalla.
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showDeviceActions(Device device) async {
+    HapticFeedback.mediumImpact();
+    final colors = context.appColors;
+    final isCurrentDevice = _isCurrentDevice(device);
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    device.deviceName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  if (isCurrentDevice) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Este dispositivo',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Desactivar solo tiene sentido en dispositivos que no son el
+            // actual: no tiene lógica "desactivar" el que estás usando
+            // ahora mismo para seguir viendo la app.
+            if (device.isActive && !isCurrentDevice)
+              ListTile(
+                leading: Icon(
+                  Icons.pause_circle_outline,
+                  color: colors.textPrimary,
+                ),
+                title: Text(
+                  'Desactivar dispositivo',
+                  style: TextStyle(color: colors.textPrimary),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'deactivate'),
+              ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFC15C4A),
+              ),
+              title: Text(
+                isCurrentDevice
+                    ? 'Eliminar este dispositivo'
+                    : 'Eliminar dispositivo',
+                style: const TextStyle(color: Color(0xFFC15C4A)),
+              ),
+              onTap: () => Navigator.pop(sheetContext, 'delete'),
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    if (action == 'deactivate') {
+      await _deactivateDevice(device);
+    } else if (action == 'delete') {
+      final confirmed = await _confirmDelete(
+        device,
+        isCurrentDevice: isCurrentDevice,
+      );
+      if (confirmed)
+        await _deleteDevice(device, isCurrentDevice: isCurrentDevice);
+    }
+  }
+
+  Future<bool> _confirmDelete(
+    Device device, {
+    required bool isCurrentDevice,
+  }) async {
+    final colors = context.appColors;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '¿Eliminar dispositivo?',
+          style: TextStyle(color: colors.textPrimary),
+        ),
+        content: Text(
+          isCurrentDevice
+              ? 'Este es el dispositivo que estás usando ahora. Al eliminarlo, se cerrará tu sesión aquí y tendrás que volver a iniciar sesión.'
+              : 'Se eliminará "${device.deviceName}" y dejará de estar vinculado a tu cuenta.',
+          style: TextStyle(color: colors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: colors.textSecondary),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC15C4A),
+            ),
+            child: Text(
+              isCurrentDevice ? 'Eliminar y cerrar sesión' : 'Eliminar',
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _deactivateDevice(Device device) async {
+    try {
+      await _deviceRepository.deactivateDevice(device.id);
+      if (!mounted) return;
+      setState(() {
+        final index = _devices.indexWhere((d) => d.id == device.id);
+        if (index != -1) {
+          final d = _devices[index];
+          _devices[index] = Device(
+            id: d.id,
+            userId: d.userId,
+            deviceName: d.deviceName,
+            platform: d.platform,
+            isActive: false,
+            createdAt: d.createdAt,
+            lastSeenAt: d.lastSeenAt,
+          );
+        }
+      });
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (_) {
+      _showSnack('No se pudo desactivar el dispositivo.');
+    }
+  }
+
+  Future<void> _deleteDevice(
+    Device device, {
+    bool isCurrentDevice = false,
+  }) async {
+    try {
+      await _deviceRepository.deleteDevice(device.id);
+      if (!mounted) return;
+
+      // Si el usuario eliminó el dispositivo desde el que está usando la
+      // app: 1) limpiamos el device_id guardado localmente (si no, la
+      // próxima vez que abra la app, getOrRegisterDeviceId() devolvería un
+      // id que el backend ya no reconoce), y 2) cerramos sesión de
+      // inmediato para evitar que el background service siga corriendo
+      // con un deviceId inexistente.
+      if (isCurrentDevice) {
+        await _locationDeviceRepository.clearSavedDeviceId();
+        _showSnack('Dispositivo eliminado. Cerrando sesión...');
+        await _signOut();
+        return;
+      }
+
+      setState(() {
+        _devices.removeWhere((d) => d.id == device.id);
+      });
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (_) {
+      _showSnack('No se pudo eliminar el dispositivo.');
+    }
+  }
+
   Future<void> _loadDevices() async {
     setState(() => _state = _LoadState.loading);
     try {
@@ -415,11 +740,7 @@ class _ProfilePageState extends State<ProfilePage>
               const SizedBox(height: 20),
               _FadeSlideIn(
                 animation: _stagger(0.4, 1.0),
-                child: _SignOutButton(
-                  onTap: () {
-                    FlutterBackgroundService().invoke('stopService');
-                  },
-                ),
+                child: _SignOutButton(onTap: _confirmSignOut),
               ),
             ],
           ),
@@ -513,7 +834,11 @@ class _ProfilePageState extends State<ProfilePage>
               _FadeSlideIn(
                 // cada dispositivo entra un poco después del anterior
                 animation: _stagger(0.2 + i * 0.1, 0.8 + i * 0.1),
-                child: _DeviceTile(device: _devices[i]),
+                child: _DeviceTile(
+                  device: _devices[i],
+                  isCurrentDevice: _isCurrentDevice(_devices[i]),
+                  onLongPress: () => _showDeviceActions(_devices[i]),
+                ),
               ),
           ],
         );
@@ -680,7 +1005,13 @@ class _SectionCard extends StatelessWidget {
 
 class _DeviceTile extends StatelessWidget {
   final Device device;
-  const _DeviceTile({required this.device});
+  final bool isCurrentDevice;
+  final VoidCallback? onLongPress;
+  const _DeviceTile({
+    required this.device,
+    this.isCurrentDevice = false,
+    this.onLongPress,
+  });
 
   IconData get _icon {
     switch (device.platform) {
@@ -694,10 +1025,11 @@ class _DeviceTile extends StatelessWidget {
   }
 
   String get _statusText {
-    if (device.isActive) return 'Activo ahora';
+    final suffix = isCurrentDevice ? ' · Este dispositivo' : '';
+    if (device.isActive) return 'Activo ahora$suffix';
     final lastSeen = device.lastSeenAt;
-    if (lastSeen == null) return 'Sin actividad registrada';
-    return 'Inactivo · ${timeAgo(lastSeen)}';
+    if (lastSeen == null) return 'Sin actividad registrada$suffix';
+    return 'Inactivo · ${timeAgo(lastSeen)}$suffix';
   }
 
   @override
@@ -710,6 +1042,7 @@ class _DeviceTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {}, // hook para ver detalle del dispositivo si lo necesitas
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
@@ -813,7 +1146,6 @@ class _PulsingDotState extends State<_PulsingDot>
 // ---------------------------------------------------------------------------
 // BOTÓN DE CERRAR SESIÓN
 // ---------------------------------------------------------------------------
-
 class _SignOutButton extends StatelessWidget {
   final VoidCallback onTap;
   const _SignOutButton({required this.onTap});
