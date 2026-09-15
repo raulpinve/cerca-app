@@ -474,19 +474,13 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       await GoogleSignIn.instance.signOut();
     } catch (_) {
-      // Puede fallar si nunca hubo sesión de Google activa; seguimos igual.
+      // Puede fallar si nunca hubo sesión de Google activa; no es fatal.
     }
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {
       // Aunque falle, igual sacamos al usuario de la pantalla.
     }
-
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
   }
 
   void _showSnack(String message) {

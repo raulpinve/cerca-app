@@ -169,6 +169,7 @@ class DeviceRepository {
   }
 
   Future<Device> _registerDevice() async {
+    debugPrintStack(label: 'POST /devices disparado desde:');
     final token = await _getToken();
     if (token == null) {
       throw AuthenticationException('No hay usuario autenticado');
