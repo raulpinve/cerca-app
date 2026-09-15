@@ -259,13 +259,11 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   }
 
   void _centerOnMyLocation() {
-    if (_deviceId == null) return;
+    if (_members.isEmpty) return;
 
     final myMember = _members.firstWhere(
       (m) => m.deviceId == _deviceId,
-      orElse: () => _members.isNotEmpty
-          ? _members.first
-          : throw Exception('Sin miembros'),
+      orElse: () => _members.first,
     );
 
     try {
@@ -537,6 +535,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final topInset = MediaQuery.of(context).padding.top;
 
     if (_isLoadingCircles) {
       return Center(
@@ -632,7 +631,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
         ),
         if (_isLoadingLocations)
           Positioned(
-            top: 80,
+            top: topInset + 70,
             left: 0,
             right: 0,
             child: Center(
@@ -649,7 +648,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
 
         if (_locationsError != null)
           Positioned(
-            top: 80,
+            top: topInset + 70,
             left: 16,
             right: 16,
             child: Material(
@@ -684,7 +683,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
         if (_permissionStatus == LocationPermission.denied ||
             _permissionStatus == LocationPermission.deniedForever)
           Positioned(
-            top: 140,
+            top: topInset + 130,
             left: 16,
             right: 16,
             child: Material(
@@ -733,7 +732,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
 
         if (_permissionStatus == LocationPermission.whileInUse)
           Positioned(
-            top: 80,
+            top: topInset + 70,
             left: 16,
             right: 16,
             child: Material(
@@ -796,6 +795,11 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
                 ),
                 Row(
                   children: [
+                    CircleIconButton(
+                      icon: Icons.my_location,
+                      onTap: _centerOnMyLocation,
+                    ),
+                    const SizedBox(width: 8),
                     CircleIconButton(
                       icon: Icons.person_add_outlined,
                       onTap: activeCircleId != null ? _showInviteDialog : null,
