@@ -277,7 +277,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     if (!mounted) return;
 
     final index = _members.indexWhere((m) => m.deviceId == _deviceId);
-    if (index == -1) return; // aún no tenemos tu propio member cargado del backend, ignora por ahora
+    if (index == -1) return;
 
     final updated = MemberLocation(
       id: _members[index].id,
@@ -287,8 +287,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
       position: LatLng(position.latitude, position.longitude),
       color: _members[index].color,
       lastSeenText: 'En vivo',
-      recentTrail:
-          _members[index].recentTrail, // el trail sigue viniendo del backend
+      recentTrail: _members[index].recentTrail,
     );
 
     setState(() {
@@ -531,6 +530,17 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
       }
     }
   }
+  // Métodos para zoom, junto a _centerOnMyLocation
+
+  void _zoomIn() {
+    final camera = _mapController.camera;
+    _mapController.move(camera.center, camera.zoom + 1);
+  }
+
+  void _zoomOut() {
+    final camera = _mapController.camera;
+    _mapController.move(camera.center, camera.zoom - 1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -629,6 +639,34 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
             }
           },
         ),
+
+        Positioned(
+          right: 16,
+          bottom: 24,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleIconButton(
+                icon: Icons.add,
+                onTap: _zoomIn,
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              CircleIconButton(
+                icon: Icons.remove,
+                onTap: _zoomOut,
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              CircleIconButton(
+                icon: Icons.my_location,
+                onTap: _members.isNotEmpty ? _centerOnMyLocation : null,
+                size: 46,
+              ),
+            ],
+          ),
+        ),
+
         if (_isLoadingLocations)
           Positioned(
             top: topInset + 70,
@@ -795,11 +833,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
                 ),
                 Row(
                   children: [
-                    CircleIconButton(
-                      icon: Icons.my_location,
-                      onTap: _centerOnMyLocation,
-                    ),
-                    const SizedBox(width: 8),
                     CircleIconButton(
                       icon: Icons.person_add_outlined,
                       onTap: activeCircleId != null ? _showInviteDialog : null,
