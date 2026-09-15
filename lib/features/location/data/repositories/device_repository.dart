@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -30,6 +31,50 @@ class DeviceRepository {
   static const _deviceIdKey = 'device_id';
   final _authTokenProvider = AuthTokenProvider();
 
+  /// Lock global: si ya hay un registro en curso (p.ej. dos llamadas a
+  /// registerDeviceOnLogin casi simultáneas por un doble tap o un retry),
+  /// las llamadas siguientes esperan ESE resultado en vez de disparar
+  /// su propio registro en paralelo. Esto es lo que evitaba duplicados
+  /// dentro del mismo isolate.
+  static Completer<String>? _pendingRegistration;
+
+  // ---------------------------------------------------------------------
+  // API pública: se llama SOLO desde el flujo de auth (login/logout).
+  // AppLocationController ya no registra nada, solo lee el id guardado.
+  // ---------------------------------------------------------------------
+
+  /// Llamar justo después de un login exitoso.
+  Future<String> registerDeviceOnLogin() => _getOrRegisterDeviceId();
+
+  /// Llamar justo antes/durante el logout. Es best-effort: si falla
+  /// (sin red, app matada), no bloquea el logout. La reconciliación
+  /// real de "dispositivos huérfanos" debería vivir en el backend
+  /// (job que desactiva devices inactivos hace N días).
+  Future<void> deactivateDeviceOnLogout() async {
+    final id = await getSavedDeviceId();
+    if (id == null) return;
+
+    try {
+      final token = await _getToken();
+      if (token != null) {
+        await http
+            .patch(
+              Uri.parse('${AppConfig.apiHost}/devices/$id'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({'active': false}),
+            )
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      debugPrint('No se pudo desactivar el device (no crítico): $e');
+    } finally {
+      await clearSavedDeviceId();
+    }
+  }
+
   Future<String?> getSavedDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_deviceIdKey);
@@ -45,10 +90,35 @@ class DeviceRepository {
     await prefs.remove(_deviceIdKey);
   }
 
+  // ---------------------------------------------------------------------
+  // Registro con lock
+  // ---------------------------------------------------------------------
+
+  Future<String> _getOrRegisterDeviceId() async {
+    if (_pendingRegistration != null) {
+      debugPrint('Ya hay un registro en curso, esperando resultado...');
+      return _pendingRegistration!.future;
+    }
+
+    final completer = Completer<String>();
+    _pendingRegistration = completer;
+
+    try {
+      final id = await _getOrRegisterDeviceIdInternal();
+      completer.complete(id);
+      return id;
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _pendingRegistration = null;
+    }
+  }
+
   /// Ahora SIEMPRE valida contra el backend antes de reutilizar un id
   /// guardado localmente. Si el id ya no existe (fue eliminado desde
   /// otro lado), limpia el local y registra uno nuevo automáticamente.
-  Future<String> getOrRegisterDeviceId() async {
+  Future<String> _getOrRegisterDeviceIdInternal() async {
     final saved = await getSavedDeviceId();
     debugPrint('DeviceId guardado localmente: $saved');
 
@@ -87,7 +157,6 @@ class DeviceRepository {
       if (response.statusCode == 404) return false;
       if (response.statusCode == 200) return true;
 
-      // Otro código (500, etc.): no sabemos con certeza, fail-open.
       debugPrint('Status inesperado verificando device, se asume vinculado');
       return true;
     } on SocketException catch (_) {

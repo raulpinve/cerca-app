@@ -4,7 +4,6 @@ import 'package:app/core/services/app_location_controller.dart';
 import 'package:app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 const _notificationChannelId = 'ubicacion_channel';

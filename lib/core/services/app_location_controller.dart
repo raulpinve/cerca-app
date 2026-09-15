@@ -16,11 +16,17 @@ enum DeviceLinkStatus {
   /// No hay sesión válida; hay que volver a loguearse.
   authError,
 
-  /// Hay sesión pero el dispositivo no está vinculado (fue eliminado,
-  /// falló el registro, etc.). El usuario debe re-vincularlo.
+  /// No hay dispositivo vinculado. El registro normal ocurre en el
+  /// login; si llegamos acá es porque ese registro falló o el device
+  /// fue desvinculado después (ej. lo borraron desde otra sesión).
   notLinked,
 }
 
+/// IMPORTANTE: este controller ya NO crea dispositivos por sí solo
+/// durante el tracking. El registro "feliz" ocurre en el login
+/// (DeviceRepository.registerDeviceOnLogin()). Acá solo se CONSUME
+/// un deviceId, salvo en relinkDevice(), que es el camino explícito
+/// de recuperación cuando el usuario aprieta el botón de la UI.
 class AppLocationController {
   AppLocationController._internal();
   static final AppLocationController instance =
@@ -32,33 +38,73 @@ class AppLocationController {
 
   String? deviceId;
   bool _isRunning = false;
-  bool _isReregisteringDevice = false;
 
   final _positionController = StreamController<Position>.broadcast();
   Stream<Position> get positionStream => _positionController.stream;
 
-  /// Estado de vinculación, observable por la UI (ValueListenableBuilder).
-  /// Usamos ValueNotifier en vez de Stream para tener acceso síncrono
-  /// al valor actual desde el primer build (sin esperar el primer evento).
   final ValueNotifier<DeviceLinkStatus> deviceLinkStatus = ValueNotifier(
     DeviceLinkStatus.checking,
   );
 
   bool get isRunning => _isRunning;
 
+  Future<bool>? _startFuture;
+
   Future<bool> start() async {
     if (_isRunning) return true;
+    if (_startFuture != null) return _startFuture!;
 
+    final completer = Completer<bool>();
+    _startFuture = completer.future;
+
+    try {
+      final result = await _startInternal();
+      completer.complete(result);
+      return result;
+    } finally {
+      _startFuture = null;
+    }
+  }
+
+  /// Se llama justo después de un login exitoso.
+  Future<bool> registerDeviceOnLogin() => _registerAndStartTracking();
+
+  /// Se llama desde el botón "Vincular este dispositivo" cuando el
+  /// registro automático falló o el device fue desvinculado después.
+  /// Es el mismo flujo que el login: idempotente, no duplica.
+  Future<bool> relinkDevice() => _registerAndStartTracking();
+
+  Future<bool> _registerAndStartTracking() async {
+    stop();
     deviceLinkStatus.value = DeviceLinkStatus.checking;
 
     try {
-      deviceId = await _deviceRepository.getOrRegisterDeviceId();
+      deviceId = await _deviceRepository.registerDeviceOnLogin();
     } on AuthenticationException catch (e) {
-      debugPrint('Error de autenticación: $e');
+      debugPrint('Error de autenticación al vincular: $e');
       deviceLinkStatus.value = DeviceLinkStatus.authError;
       return false;
     } catch (e) {
-      debugPrint('Error registrando dispositivo: $e');
+      debugPrint('Error vinculando dispositivo: $e');
+      deviceLinkStatus.value = DeviceLinkStatus.notLinked;
+      return false;
+    }
+
+    deviceLinkStatus.value = DeviceLinkStatus.linked;
+
+    final started = await _locationService.start(onUpdate: _onPositionUpdate);
+    _isRunning = started;
+    debugPrint('¿Tracking iniciado?: $started');
+    return started;
+  }
+
+  Future<bool> _startInternal() async {
+    deviceLinkStatus.value = DeviceLinkStatus.checking;
+
+    deviceId = await _deviceRepository.getSavedDeviceId();
+
+    if (deviceId == null) {
+      debugPrint('No hay device vinculado, no se puede iniciar tracking');
       deviceLinkStatus.value = DeviceLinkStatus.notLinked;
       return false;
     }
@@ -69,15 +115,6 @@ class AppLocationController {
     _isRunning = started;
     debugPrint('¿Tracking global iniciado?: $started');
     return started;
-  }
-
-  /// Llamado explícitamente desde el botón "Vincular dispositivo".
-  /// Fuerza limpiar cualquier id viejo y registrar uno nuevo.
-  Future<bool> relinkDevice() async {
-    stop();
-    deviceId = null;
-    await _deviceRepository.clearSavedDeviceId();
-    return start();
   }
 
   void stop() {
@@ -99,29 +136,13 @@ class AppLocationController {
       );
       debugPrint('Enviado: ${position.latitude}, ${position.longitude}');
     } on DeviceNotFoundException {
-      // Avisamos a la UI de inmediato: hay una ventana en que el
-      // dispositivo NO está vinculado, aunque logremos recuperarlo después.
+      // El backend ya no reconoce este device (fue eliminado o
+      // desactivado desde otro lado). Ya no re-registramos solos acá
+      // para no reabrir la puerta a duplicados fuera de login/relink;
+      // avisamos a la UI y el usuario usa el botón de relink.
       deviceLinkStatus.value = DeviceLinkStatus.notLinked;
-
-      if (_isReregisteringDevice) return;
-      _isReregisteringDevice = true;
-      try {
-        debugPrint('Device no reconocido por backend, re-registrando...');
-        await _deviceRepository.clearSavedDeviceId();
-        deviceId = await _deviceRepository.getOrRegisterDeviceId();
-        await _locationRepository.updateMyLocation(
-          deviceId: deviceId!,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          accuracyM: position.accuracy,
-        );
-        deviceLinkStatus.value = DeviceLinkStatus.linked; // se recuperó solo
-      } catch (e) {
-        debugPrint('Error al re-registrar dispositivo: $e');
-        deviceLinkStatus.value = DeviceLinkStatus.notLinked; // sigue roto
-      } finally {
-        _isReregisteringDevice = false;
-      }
+      _isRunning = false;
+      _locationService.stop();
     } catch (e) {
       debugPrint('Error inesperado al enviar ubicación: $e');
     }
