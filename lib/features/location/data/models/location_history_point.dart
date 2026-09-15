@@ -13,7 +13,7 @@ class LocationHistoryPoint {
     return LocationHistoryPoint(
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      recordedAt: DateTime.parse(json['recordedAt'] as String),
+      recordedAt: DateTime.parse(json['recordedAt'] as String).toLocal(),
     );
   }
 }

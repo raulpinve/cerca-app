@@ -19,13 +19,14 @@ class LocationPoint {
   LatLng get position => LatLng(latitude, longitude);
 
   factory LocationPoint.fromJson(Map<String, dynamic> json) {
+    print('RAW recorded_at: ${json['recorded_at']}');
     return LocationPoint(
       latitude: double.parse(json['latitude'].toString()),
       longitude: double.parse(json['longitude'].toString()),
       accuracyM: json['accuracy_m'] == null
           ? null
           : double.parse(json['accuracy_m'].toString()),
-      recordedAt: DateTime.parse(json['recorded_at'].toString()),
+      recordedAt: DateTime.parse(json['recorded_at'].toString()).toLocal(),
     );
   }
 }
@@ -165,6 +166,8 @@ class LocationHistoryPage extends StatefulWidget {
 }
 
 class _LocationHistoryPageState extends State<LocationHistoryPage> {
+  final _mapController = MapController();
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -198,11 +201,12 @@ class _LocationHistoryPageState extends State<LocationHistoryPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: SizedBox(
-                    height: 160,
+                    height: 320,
                     child: _MiniTrailMap(
                       points: widget.points,
                       color: widget.color,
                       cartoApiKey: widget.cartoApiKey,
+                      controller: _mapController,
                     ),
                   ),
                 ),
@@ -308,23 +312,23 @@ class _MiniTrailMap extends StatelessWidget {
   final List<LocationPoint> points;
   final Color color;
   final String cartoApiKey;
+  final MapController controller;
 
   const _MiniTrailMap({
     required this.points,
     required this.color,
     required this.cartoApiKey,
+    required this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     final trail = points.map((p) => p.position).toList();
-    final uniquePoints = trail
-        .toSet()
-        .length; // cuántas posiciones distintas hay
+    final uniquePoints = trail.toSet().length;
 
     return FlutterMap(
+      mapController: controller,
       options: MapOptions(
-        // Si solo hay 1 posición única, usa centro+zoom fijo en vez de CameraFit
         initialCenter: uniquePoints <= 1 ? trail.first : const LatLng(0, 0),
         initialZoom: uniquePoints <= 1 ? 15 : 13,
         initialCameraFit: uniquePoints > 1
@@ -334,7 +338,7 @@ class _MiniTrailMap extends StatelessWidget {
               )
             : null,
         interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.none,
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
       ),
       children: [
