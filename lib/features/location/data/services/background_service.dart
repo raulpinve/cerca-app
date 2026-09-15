@@ -60,8 +60,6 @@ Future<void> initBackgroundService() async {
 void _onServiceStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
 
-  // 👇 Necesario: este código corre en su propio isolate,
-  // que no comparte el Firebase.initializeApp() del isolate principal.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

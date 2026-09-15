@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_colors.dart';
-import 'package:app/core/services/app_location_controller.dart';
 import 'package:app/features/location/data/services/location_tracking_service.dart';
 
 class MainNavigationPage extends StatefulWidget {
@@ -27,10 +26,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   Future<void> _startSharing() async {
-    // Pedimos el permiso ACÁ, en el isolate principal (con Activity
-    // disponible), antes de arrancar el background service. Si esto se
-    // hiciera dentro del isolate del servicio, truena con
-    // ActivityMissingException.
     final locationService = LocationTrackingService();
     final granted = await locationService.requestPermissions();
 
@@ -58,8 +53,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   @override
   void dispose() {
-    // Ya NO llamamos stopService() aquí.
-    // El servicio debe seguir vivo aunque este widget se destruya.
     super.dispose();
   }
 

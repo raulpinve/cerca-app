@@ -1,5 +1,6 @@
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/location/data/services/background_service.dart';
+import 'package:app/features/location/presentation/pages/device_link_gate.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -28,6 +29,9 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       title: 'Family App',
       routerConfig: appRouter,
+      builder: (context, child) {
+        return DeviceLinkGate(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

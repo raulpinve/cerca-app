@@ -658,13 +658,10 @@ class _ProfilePageState extends State<ProfilePage>
       await _deviceRepository.deleteDevice(device.id);
       if (!mounted) return;
 
-      // Si el usuario eliminó el dispositivo desde el que está usando la
-      // app: 1) limpiamos el device_id guardado localmente (si no, la
-      // próxima vez que abra la app, getOrRegisterDeviceId() devolvería un
-      // id que el backend ya no reconoce), y 2) cerramos sesión de
-      // inmediato para evitar que el background service siga corriendo
-      // con un deviceId inexistente.
-      if (isCurrentDevice) {
+      final savedId = await _locationDeviceRepository.getSavedDeviceId();
+      final isActuallyCurrentDevice = savedId != null && savedId == device.id;
+
+      if (isActuallyCurrentDevice) {
         await _locationDeviceRepository.clearSavedDeviceId();
         _showSnack('Dispositivo eliminado. Cerrando sesión...');
         await _signOut();
