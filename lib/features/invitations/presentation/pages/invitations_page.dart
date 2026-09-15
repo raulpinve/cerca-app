@@ -91,99 +91,123 @@ class _InvitationsPageState extends State<InvitationsPage> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: colors.selected))
-          : _invitations.isEmpty
-          ? Center(
-              child: Text(
-                'No tienes invitaciones pendientes',
-                style: TextStyle(color: colors.textSecondary),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _invitations.length,
-              itemBuilder: (context, index) {
-                final invitation = _invitations[index];
-                final isProcessing = _processingIds.contains(invitation.id);
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.indicator,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        invitation.circleName,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Invitado por ${invitation.invitedByFullName}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (isProcessing)
-                        Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colors.selected,
+          : RefreshIndicator(
+              onRefresh: _loadInvitations,
+              color: colors.selected,
+              child: _invitations.isEmpty
+                  ? ListView(
+                      // ListView (no Center) para que el pull-to-refresh
+                      // funcione incluso sin invitaciones
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.7,
+                          child: Center(
+                            child: Text(
+                              'No tienes invitaciones pendientes',
+                              style: TextStyle(color: colors.textSecondary),
                             ),
                           ),
-                        )
-                      else
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _respond(invitation, false),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: colors.textSecondary,
-                                  side: BorderSide(color: colors.border),
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _invitations.length,
+                      itemBuilder: (context, index) {
+                        final invitation = _invitations[index];
+                        final isProcessing = _processingIds.contains(
+                          invitation.id,
+                        );
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: colors.indicator,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                invitation.circleName,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textPrimary,
                                 ),
-                                child: const Text('Rechazar'),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () => _respond(invitation, true),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colors.selected,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'Aceptar',
-                                      style: TextStyle(color: Colors.white),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Invitado por ${invitation.invitedByFullName}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isProcessing)
+                                Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: colors.selected,
                                     ),
                                   ),
+                                )
+                              else
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () =>
+                                            _respond(invitation, false),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: colors.textSecondary,
+                                          side: BorderSide(
+                                            color: colors.border,
+                                          ),
+                                        ),
+                                        child: const Text('Rechazar'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(8),
+                                        onTap: () => _respond(invitation, true),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colors.selected,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Center(
+                                            child: Text(
+                                              'Aceptar',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                );
-              },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
     );
   }
