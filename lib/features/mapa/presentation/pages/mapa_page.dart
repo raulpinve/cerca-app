@@ -642,7 +642,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
 
         Positioned(
           right: 16,
-          bottom: 24,
+          bottom: 150,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
