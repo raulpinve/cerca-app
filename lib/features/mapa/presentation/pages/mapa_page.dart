@@ -25,7 +25,6 @@ class MapaPage extends StatefulWidget {
 
 class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   List<MemberLocation> _members = [];
-  Timer? _refreshTimer;
   StreamSubscription<Position>? _positionSub;
   final _locationRepository = LocationRepository();
   final _circleRepository = CircleRepository();
@@ -68,7 +67,9 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   void _onRemoteLocationUpdate(Map<String, dynamic> data) {
     final deviceId = data['deviceId'] as String;
     final index = _members.indexWhere((m) => m.deviceId == deviceId);
-    if (index == -1) return; // el update es de un device que no conocemos aún (ej: nuevo miembro)
+    if (index == -1) return;
+
+    
 
     final updated = MemberLocation(
       id: _members[index].id,
@@ -550,7 +551,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
         );
       }
 
-      await _loadCircles(); // recarga la lista completa
+      await _loadCircles();
     } catch (e) {
       debugPrint('Error al salir/eliminar círculo: $e');
       if (mounted) {

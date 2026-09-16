@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter/rendering.dart';
+
 class TrailPoint {
   final double latitude;
   final double longitude;
@@ -15,8 +19,9 @@ class TrailPoint {
 class MemberLocationResponse {
   final String deviceId;
   final String userId;
-  final String firstName;
+  final String? firstName;
   final String? lastName;
+  final String memberInitials;
   final double latitude;
   final double longitude;
   final double accuracyM;
@@ -26,8 +31,9 @@ class MemberLocationResponse {
   MemberLocationResponse({
     required this.deviceId,
     required this.userId,
-    required this.firstName,
+    this.firstName,
     this.lastName,
+    required this.memberInitials,
     required this.latitude,
     required this.longitude,
     required this.accuracyM,
@@ -39,8 +45,9 @@ class MemberLocationResponse {
     return MemberLocationResponse(
       deviceId: json['deviceId'] as String,
       userId: json['userId'] as String,
-      firstName: json['firstName'] as String? ?? 'Usuario',
+      firstName: json['firstName'] as String?,
       lastName: json['lastName'] as String?,
+      memberInitials: json['memberInitials'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       accuracyM: (json['accuracyM'] as num?)?.toDouble() ?? 0,

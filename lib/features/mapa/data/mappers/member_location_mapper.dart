@@ -4,15 +4,21 @@ import 'package:app/features/location/data/models/member_location_response.dart'
 import 'package:app/features/mapa/presentation/widgets/family_map.dart';
 
 MemberLocation toMemberLocation(MemberLocationResponse res) {
-  final fullName = res.lastName != null
-      ? '${res.firstName} ${res.lastName}'
-      : res.firstName;
+  final hasFirst = res.firstName?.isNotEmpty ?? false;
+  final hasLast = res.lastName?.isNotEmpty ?? false;
+
+  final fullName = hasFirst || hasLast
+      ? [
+          res.firstName,
+          res.lastName,
+        ].where((s) => s != null && s.isNotEmpty).join(' ')
+      : 'Miembro';
 
   return MemberLocation(
     id: res.userId,
     deviceId: res.deviceId,
     name: fullName,
-    initials: _getInitials(res.firstName, res.lastName),
+    initials: res.memberInitials,
     position: LatLng(res.latitude, res.longitude),
     color: _colorForUser(res.userId),
     lastSeenText: _getLastSeenText(res.updatedAt),
@@ -20,12 +26,6 @@ MemberLocation toMemberLocation(MemberLocationResponse res) {
         .map((p) => LatLng(p.latitude, p.longitude))
         .toList(),
   );
-}
-
-String _getInitials(String firstName, String? lastName) {
-  final first = firstName.isNotEmpty ? firstName[0] : '';
-  final last = (lastName != null && lastName.isNotEmpty) ? lastName[0] : '';
-  return '$first$last'.toUpperCase();
 }
 
 Color _colorForUser(String userId) {

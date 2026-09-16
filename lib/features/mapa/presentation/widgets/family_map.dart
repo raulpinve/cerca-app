@@ -5,8 +5,8 @@ import 'package:latlong2/latlong.dart' show LatLng;
 
 /// Ubicación de un miembro para pintar en el mapa, con su recorrido reciente.
 class MemberLocation {
-  final String id; // userId - para navegar a perfil en el futuro
-  final String deviceId; // deviceId - para pedir historial de ubicaciones
+  final String id;
+  final String deviceId;
   final String name;
   final String initials;
   final LatLng position;
@@ -39,7 +39,7 @@ class FamilyMap extends StatefulWidget {
     super.key,
     required this.members,
     required this.cartoApiKey,
-    this.initialCenter = const LatLng(4.7110, -74.0721), // Bogotá, ajustalo
+    this.initialCenter = const LatLng(4.7110, -74.0721),
     this.controller,
     this.onViewFullHistory,
   });
