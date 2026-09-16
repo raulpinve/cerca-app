@@ -5,6 +5,7 @@ import 'package:app/core/services/app_location_controller.dart';
 import 'package:app/core/theme/app_colors.dart';
 import 'package:app/features/invitations/data/repositories/invitation_repository.dart';
 import 'package:app/features/location/data/repositories/location_repository.dart';
+import 'package:app/features/location/data/services/socket_service.dart';
 import 'package:app/features/location/presentation/pages/location_history_page.dart';
 import 'package:app/features/mapa/data/repositories/circle_repository.dart';
 import 'package:app/features/mapa/presentation/widgets/circle_selector.dart';
@@ -31,6 +32,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   final _mapController = MapController();
   final _invitationRepository = InvitationRepository();
   LocationPermission? _permissionStatus;
+  final _socketService = SocketService();
 
   bool _hasCenteredOnce = false;
   String? get _deviceId => AppLocationController.instance.deviceId;
@@ -51,24 +53,53 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _checkPermissionStatus();
     _loadCircles();
-
+    _connectSocket();
     _positionSub = AppLocationController.instance.positionStream.listen(
       _updateOwnMemberLocally,
     );
+  }
 
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) => _loadCircleLocations(
-        showLoading: false,
-      ),
+  Future<void> _connectSocket() async {
+    await _socketService.connect(
+      onLocationUpdate: _onRemoteLocationUpdate,
     );
+  }
+
+  void _onRemoteLocationUpdate(Map<String, dynamic> data) {
+    final deviceId = data['deviceId'] as String;
+    final index = _members.indexWhere((m) => m.deviceId == deviceId);
+    if (index == -1) return; // el update es de un device que no conocemos aún (ej: nuevo miembro)
+
+    final updated = MemberLocation(
+      id: _members[index].id,
+      deviceId: _members[index].deviceId,
+      name: _members[index].name,
+      initials: _members[index].initials,
+      position: LatLng(
+        (data['latitude'] as num).toDouble(),
+        (data['longitude'] as num).toDouble(),
+      ),
+      color: _members[index].color,
+      lastSeenText: 'En vivo',
+      recentTrail: _members[index].recentTrail,
+    );
+
+    if (mounted) {
+      setState(() {
+        _members = [
+          ..._members.sublist(0, index),
+          updated,
+          ..._members.sublist(index + 1),
+        ];
+      });
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _positionSub?.cancel();
-    _refreshTimer?.cancel();
+    _socketService.disconnect();
     super.dispose();
   }
 
