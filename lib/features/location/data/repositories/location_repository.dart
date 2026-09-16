@@ -7,54 +7,37 @@ import 'package:flutter/foundation.dart';
 import 'package:app/core/config/app_config.dart';
 import 'package:app/core/auth/auth_token_provider.dart';
 
-class DeviceNotFoundException implements Exception {}
-
 class LocationRepository {
   final _authTokenProvider = AuthTokenProvider();
 
   Future<void> updateMyLocation({
-    required String deviceId,
     required double latitude,
     required double longitude,
     required double accuracyM,
   }) async {
     final token = await _authTokenProvider.getIdToken();
+
     if (token == null) {
-      debugPrint('No hay usuario autenticado, no se envía ubicación');
-      return;
+      throw Exception('No hay usuario autenticado');
     }
 
-    final url = Uri.parse('${AppConfig.apiHost}/locations/me');
-    try {
-      final response = await http.put(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'deviceId': deviceId,
-          'latitude': latitude,
-          'longitude': longitude,
-          'accuracyM': accuracyM,
-        }),
+    final response = await http.put(
+      Uri.parse('${AppConfig.apiHost}/locations/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracyM': accuracyM,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'No se pudo actualizar la ubicación (${response.statusCode})',
       );
-
-      if (response.statusCode == 404) {
-        throw DeviceNotFoundException();
-      } else if (response.statusCode != 200 && response.statusCode != 201) {
-        debugPrint(
-          'Error al enviar ubicación: ${response.statusCode} ${response.body}',
-        );
-      }
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        debugPrint(
-          'Error al enviar ubicación: ${response.statusCode} ${response.body}',
-        );
-      }
-    } catch (e) {
-      debugPrint('Excepción al enviar ubicación: $e');
     }
   }
 
@@ -62,47 +45,102 @@ class LocationRepository {
     String circleId,
   ) async {
     final token = await _authTokenProvider.getIdToken();
-    if (token == null) throw Exception('No hay usuario autenticado');
 
-    final url = Uri.parse('${AppConfig.apiHost}/locations/circles/$circleId');
+    if (token == null) {
+      throw Exception('No hay usuario autenticado');
+    }
+
+    final url = Uri.parse(
+      '${AppConfig.apiHost}/locations/circles/$circleId',
+    );
 
     final response = await http.get(
       url,
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
       final data = json['data'] as List;
+
       debugPrint('Respuesta cruda: $data');
+
       return data.map((e) => MemberLocationResponse.fromJson(e)).toList();
-    } else {
-      throw Exception('Error al obtener ubicaciones: ${response.statusCode}');
     }
+
+    throw Exception(
+      'Error al obtener ubicaciones: ${response.statusCode}',
+    );
   }
 
-  Future<List<LocationHistoryPoint>> getDeviceHistory(
-    String deviceId, {
+  Future<List<LocationHistoryPoint>> getUserHistory(
+    String userId, {
     int limit = 20,
   }) async {
     final token = await _authTokenProvider.getIdToken();
-    if (token == null) throw Exception('No hay usuario autenticado');
+
+    if (token == null) {
+      throw Exception('No hay usuario autenticado');
+    }
 
     final url = Uri.parse(
-      '${AppConfig.apiHost}/locations/devices/$deviceId/history?limit=$limit',
+      '${AppConfig.apiHost}/locations/users/$userId/history?limit=$limit',
     );
 
     final response = await http.get(
       url,
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
+
       final data = json['data'] as List;
-      return data.map((e) => LocationHistoryPoint.fromJson(e)).toList();
-    } else {
-      throw Exception('Error al obtener historial: ${response.statusCode}');
+
+      return data
+          .map(
+            (e) => LocationHistoryPoint.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
+          .toList();
     }
+
+    throw Exception(
+      'Error al obtener historial: ${response.statusCode}',
+    );
+  }
+
+  Future<String> getMyUserId() async {
+    final token = await _authTokenProvider.getIdToken();
+
+    if (token == null) {
+      throw Exception('No hay usuario autenticado');
+    }
+
+    final url = Uri.parse(
+      '${AppConfig.apiHost}/users/me',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+
+      return json['data']['id'] as String;
+    }
+
+    throw Exception(
+      'Error al obtener usuario actual: ${response.statusCode}',
+    );
   }
 }

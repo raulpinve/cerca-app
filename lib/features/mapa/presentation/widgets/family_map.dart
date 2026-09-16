@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart' show LatLng;
 /// Ubicación de un miembro para pintar en el mapa, con su recorrido reciente.
 class MemberLocation {
   final String id;
-  final String deviceId;
+  final String userId;
   final String name;
   final String initials;
   final LatLng position;
@@ -16,7 +16,7 @@ class MemberLocation {
 
   MemberLocation({
     required this.id,
-    required this.deviceId,
+    required this.userId,
     required this.name,
     required this.initials,
     required this.position,
@@ -30,7 +30,7 @@ class FamilyMap extends StatefulWidget {
   final List<MemberLocation> members;
   final LatLng initialCenter;
   final MapController? controller;
-  final String currentDeviceId;
+  final String currentUserId;
   final String cartoApiKey;
 
   final void Function(MemberLocation member)? onViewFullHistory;
@@ -38,7 +38,7 @@ class FamilyMap extends StatefulWidget {
   const FamilyMap({
     super.key,
     required this.members,
-    required this.currentDeviceId,
+    required this.currentUserId,
     required this.cartoApiKey,
     this.initialCenter = const LatLng(4.7110, -74.0721),
     this.controller,
@@ -114,7 +114,7 @@ class _FamilyMapState extends State<FamilyMap> {
                         ),
                         child: Center(
                           child: Text(
-                            member.deviceId == widget.currentDeviceId
+                            member.userId == widget.currentUserId
                                 ? 'Yo'
                                 : member.initials,
                             style: const TextStyle(

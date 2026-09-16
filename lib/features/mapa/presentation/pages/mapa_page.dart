@@ -10,7 +10,6 @@ import 'package:app/features/location/presentation/pages/location_history_page.d
 import 'package:app/features/mapa/data/repositories/circle_repository.dart';
 import 'package:app/features/mapa/presentation/widgets/circle_selector.dart';
 import 'package:app/features/mapa/presentation/widgets/family_map.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -33,9 +32,8 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   final _invitationRepository = InvitationRepository();
   LocationPermission? _permissionStatus;
   final _socketService = SocketService();
-
   bool _hasCenteredOnce = false;
-  String? get _deviceId => AppLocationController.instance.deviceId;
+  String? _currentUserId;
 
   List<Circle> _circles = [];
   String? activeCircleId;
@@ -52,11 +50,26 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermissionStatus();
+    _loadCurrentUser();
     _loadCircles();
     _connectSocket();
     _positionSub = AppLocationController.instance.positionStream.listen(
       _updateOwnMemberLocally,
     );
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final userId = await _locationRepository.getMyUserId();
+
+      if (mounted) {
+        setState(() {
+          _currentUserId = userId;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error obteniendo usuario actual: $e');
+    }
   }
 
   Future<void> _connectSocket() async {
@@ -66,13 +79,17 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   }
 
   void _onRemoteLocationUpdate(Map<String, dynamic> data) {
-    final deviceId = data['deviceId'] as String;
-    final index = _members.indexWhere((m) => m.deviceId == deviceId);
+    final userId = data['userId'] as String;
+
+    final index = _members.indexWhere(
+      (m) => m.userId == userId,
+    );
+
     if (index == -1) return;
 
     final updated = MemberLocation(
       id: _members[index].id,
-      deviceId: _members[index].deviceId,
+      userId: _members[index].userId,
       name: _members[index].name,
       initials: _members[index].initials,
       position: LatLng(
@@ -292,7 +309,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     if (_members.isEmpty) return;
 
     final myMember = _members.firstWhere(
-      (m) => m.deviceId == _deviceId,
+      (m) => m.userId == _currentUserId,
       orElse: () => _members.first,
     );
 
@@ -306,12 +323,14 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   void _updateOwnMemberLocally(Position position) {
     if (!mounted) return;
 
-    final index = _members.indexWhere((m) => m.deviceId == _deviceId);
+    final index = _members.indexWhere(
+      (m) => m.userId == _currentUserId,
+    );
     if (index == -1) return;
 
     final updated = MemberLocation(
       id: _members[index].id,
-      deviceId: _members[index].deviceId,
+      userId: _members[index].userId,
       name: _members[index].name,
       initials: _members[index].initials,
       position: LatLng(position.latitude, position.longitude),
@@ -621,24 +640,26 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
         ),
       );
     }
-    final deviceId = AppLocationController.instance.deviceId;
 
-    if (deviceId == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    if (_currentUserId == null) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: colors.selected,
+        ),
       );
     }
+
     return Stack(
       children: [
         FamilyMap(
           members: _members,
           cartoApiKey: AppConfig.cartoApiKey,
           controller: _mapController,
-          currentDeviceId: deviceId,
+          currentUserId: _currentUserId!,
           onViewFullHistory: (member) async {
             try {
-              final points = await _locationRepository.getDeviceHistory(
-                member.deviceId,
+              final points = await _locationRepository.getUserHistory(
+                member.userId,
               );
 
               if (!mounted) return;

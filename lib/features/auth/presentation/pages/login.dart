@@ -44,18 +44,10 @@ class _LoginPageState extends State<LoginPage> {
       throw Exception('No se pudo obtener el usuario.');
     }
 
-    final String? idToken = await user.getIdToken(true);
-    if (idToken == null) {
-      throw Exception('No se pudo obtener el token de Firebase.');
-    }
+    final started = await AppLocationController.instance.start();
 
-    final linked = await AppLocationController.instance.registerDeviceOnLogin();
-
-    if (!linked) {
-      debugPrint(
-        'Login OK pero no se pudo vincular el dispositivo, '
-        'el DeviceLinkGate mostrará la pantalla de reintento.',
-      );
+    if (!started) {
+      debugPrint('Login OK pero no se pudo iniciar el tracking.');
     }
   }
 

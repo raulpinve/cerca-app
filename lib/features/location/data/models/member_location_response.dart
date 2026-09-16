@@ -1,12 +1,11 @@
-import 'dart:convert';
-
-import 'package:flutter/rendering.dart';
-
 class TrailPoint {
   final double latitude;
   final double longitude;
 
-  TrailPoint({required this.latitude, required this.longitude});
+  TrailPoint({
+    required this.latitude,
+    required this.longitude,
+  });
 
   factory TrailPoint.fromJson(Map<String, dynamic> json) {
     return TrailPoint(
@@ -17,7 +16,6 @@ class TrailPoint {
 }
 
 class MemberLocationResponse {
-  final String deviceId;
   final String userId;
   final String? firstName;
   final String? lastName;
@@ -29,7 +27,6 @@ class MemberLocationResponse {
   final List<TrailPoint> recentTrail;
 
   MemberLocationResponse({
-    required this.deviceId,
     required this.userId,
     this.firstName,
     this.lastName,
@@ -43,7 +40,6 @@ class MemberLocationResponse {
 
   factory MemberLocationResponse.fromJson(Map<String, dynamic> json) {
     return MemberLocationResponse(
-      deviceId: json['deviceId'] as String,
       userId: json['userId'] as String,
       firstName: json['firstName'] as String?,
       lastName: json['lastName'] as String?,
