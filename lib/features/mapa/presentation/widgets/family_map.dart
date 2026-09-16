@@ -30,7 +30,7 @@ class FamilyMap extends StatefulWidget {
   final List<MemberLocation> members;
   final LatLng initialCenter;
   final MapController? controller;
-
+  final String currentDeviceId;
   final String cartoApiKey;
 
   final void Function(MemberLocation member)? onViewFullHistory;
@@ -38,6 +38,7 @@ class FamilyMap extends StatefulWidget {
   const FamilyMap({
     super.key,
     required this.members,
+    required this.currentDeviceId,
     required this.cartoApiKey,
     this.initialCenter = const LatLng(4.7110, -74.0721),
     this.controller,
@@ -113,7 +114,9 @@ class _FamilyMapState extends State<FamilyMap> {
                         ),
                         child: Center(
                           child: Text(
-                            member.initials,
+                            member.deviceId == widget.currentDeviceId
+                                ? 'Yo'
+                                : member.initials,
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,

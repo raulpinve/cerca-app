@@ -10,6 +10,7 @@ import 'package:app/features/location/presentation/pages/location_history_page.d
 import 'package:app/features/mapa/data/repositories/circle_repository.dart';
 import 'package:app/features/mapa/presentation/widgets/circle_selector.dart';
 import 'package:app/features/mapa/presentation/widgets/family_map.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -68,8 +69,6 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     final deviceId = data['deviceId'] as String;
     final index = _members.indexWhere((m) => m.deviceId == deviceId);
     if (index == -1) return;
-
-    
 
     final updated = MemberLocation(
       id: _members[index].id,
@@ -629,6 +628,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
           members: _members,
           cartoApiKey: AppConfig.cartoApiKey,
           controller: _mapController,
+          currentDeviceId: _deviceId!,
           onViewFullHistory: (member) async {
             try {
               final points = await _locationRepository.getDeviceHistory(
