@@ -167,9 +167,22 @@ class _InvitationsPageState extends State<InvitationsPage> {
                                         onPressed: () =>
                                             _respond(invitation, false),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: colors.textSecondary,
-                                          side: BorderSide(
-                                            color: colors.border,
+                                          foregroundColor: const Color(
+                                            0xFFB06A55,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xFFD8B8A9),
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFFFCF5F1,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                         ),
                                         child: const Text('Rechazar'),

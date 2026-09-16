@@ -50,35 +50,6 @@ class DeviceRepository {
   /// Llamar justo después de un login exitoso.
   Future<String> registerDeviceOnLogin() => _getOrRegisterDeviceId();
 
-  /// Llamar justo antes/durante el logout. Es best-effort: si falla
-  /// (sin red, app matada), no bloquea el logout. La reconciliación
-  /// real de "dispositivos huérfanos" debería vivir en el backend
-  /// (job que desactiva devices inactivos hace N días).
-  Future<void> deactivateDeviceOnLogout() async {
-    final id = await getSavedDeviceId();
-    if (id == null) return;
-
-    try {
-      final token = await _getToken();
-      if (token != null) {
-        await http
-            .patch(
-              Uri.parse('${AppConfig.apiHost}/devices/$id'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
-              body: jsonEncode({'active': false}),
-            )
-            .timeout(const Duration(seconds: 5));
-      }
-    } catch (e) {
-      debugPrint('No se pudo desactivar el device (no crítico): $e');
-    } finally {
-      await clearSavedDeviceId();
-    }
-  }
-
   /// Identificador estable del hardware físico. En Android es el
   /// ANDROID_ID (persiste entre reinstalaciones, pero puede cambiar
   /// en un factory reset). En iOS es identifierForVendor (persiste

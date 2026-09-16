@@ -12,15 +12,10 @@ const _notificationId = 888;
 Future<void> initBackgroundService() async {
   final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  // 1. PASO QUE FALTABA: inicializar el plugin antes de usar
-  //    resolvePlatformSpecificImplementation().
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const initSettings = InitializationSettings(android: androidInit);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  // 2. Ahora sí, crear el canal (esto ya funcionará porque el plugin
-  //    ya está "adjunto" y resolvePlatformSpecificImplementation
-  //    devuelve una instancia real, no null).
   const channel = AndroidNotificationChannel(
     _notificationChannelId,
     'Ubicación compartida',

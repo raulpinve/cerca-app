@@ -621,14 +621,20 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
         ),
       );
     }
+    final deviceId = AppLocationController.instance.deviceId;
 
+    if (deviceId == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
     return Stack(
       children: [
         FamilyMap(
           members: _members,
           cartoApiKey: AppConfig.cartoApiKey,
           controller: _mapController,
-          currentDeviceId: _deviceId!,
+          currentDeviceId: deviceId,
           onViewFullHistory: (member) async {
             try {
               final points = await _locationRepository.getDeviceHistory(
