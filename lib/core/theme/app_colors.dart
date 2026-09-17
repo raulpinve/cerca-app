@@ -23,18 +23,18 @@ class AppColors extends ThemeExtension<AppColors> {
   });
 
   static const warm = AppColors(
-    surface: Color(0xFFFAF7F2), // antes FFFDF9 — menos amarillo, más "papel"
-    border: Color(0xFFE8DFD1), // antes EFE6D8 — más neutro, menos dulce
-    indicator: Color(0xFFEFDDCC), // antes F3E4D4 — un poco más terroso
-    selected: Color(0xFFAD5A38), // antes B5673A — más profundo, menos naranja
+    surface: Color(0xFFFAF7F2),
+    border: Color(0xFFE8DFD1),
+    indicator: Color(0xFFEFDDCC),
+    selected: Color(0xFFAD5A38),
     unselected: Color(
       0xFF9C9284,
-    ), // antes B0A283 — gris-taupe, no arena amarilla
-    badge: Color(0xFFDB6B52), // antes D9755C — coral más vivo, más contraste
-    textPrimary: Color(0xFF322A22), // antes 3A3226 — carbón cálido, más sobrio
+    ),
+    badge: Color(0xFFDB6B52),
+    textPrimary: Color(0xFF322A22),
     textSecondary: Color(
       0xFF8F8375,
-    ), // antes A0906F — gris cálido, menos amarillo
+    ),
   );
 
   @override
