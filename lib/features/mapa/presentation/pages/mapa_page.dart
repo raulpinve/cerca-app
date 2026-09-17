@@ -738,6 +738,14 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleIconButton(
+                icon: Icons.refresh,
+                onTap: _isLoadingLocations
+                    ? null
+                    : () => _loadCircleLocations(),
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              CircleIconButton(
                 icon: Icons.add,
                 onTap: _zoomIn,
                 size: 40,
