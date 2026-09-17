@@ -75,7 +75,7 @@ flutter_launcher_icons:
   min_sdk_android: 21
 
 flutter_native_splash:
-  color: "#ffffff"
+  color:  "#F5EFE0"
   image: assets/icon/logo.png
 
 # The following section is specific to Flutter packages.
