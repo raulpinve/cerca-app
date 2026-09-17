@@ -110,32 +110,24 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
           child: Icon(
-            Icons.shield_outlined,
-            size: 36,
+            Icons.favorite_rounded,
+            size: 34,
             color: colors.surface,
           ),
         ),
         const SizedBox(height: 20),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-              color: colors.textPrimary,
-            ),
-            children: [
-              const TextSpan(text: 'secure'),
-              TextSpan(
-                text: 'App',
-                style: TextStyle(color: colors.selected),
-              ),
-            ],
+        Text(
+          'Cerca',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Ingresá para continuar',
+          'Tu familia, siempre a un vistazo',
           style: TextStyle(
             fontSize: 15,
             color: colors.textSecondary,
@@ -165,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Iniciá sesión con tu cuenta de Google para continuar',
+            'Iniciá sesión con Google para ver a los tuyos',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
