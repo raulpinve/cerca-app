@@ -10,7 +10,6 @@ class InvitationsBadgeNotifier extends ChangeNotifier {
   int _count = 0;
   int get count => _count;
 
-  Timer? _pollTimer;
   StreamSubscription<User?>? _authSubscription;
 
   InvitationsBadgeNotifier() {
@@ -19,23 +18,11 @@ class InvitationsBadgeNotifier extends ChangeNotifier {
       debugPrint('Auth state changed: ${user?.uid}');
       if (user != null) {
         refresh();
-        _startPolling();
       } else {
-        _stopPolling();
         _count = 0;
         notifyListeners();
       }
     });
-  }
-
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => refresh());
-  }
-
-  void _stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
   }
 
   Future<void> refresh() async {
@@ -55,7 +42,6 @@ class InvitationsBadgeNotifier extends ChangeNotifier {
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     _authSubscription?.cancel();
     super.dispose();
   }

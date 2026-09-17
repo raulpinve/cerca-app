@@ -562,7 +562,7 @@ class _ProfilePageState extends State<ProfilePage>
                 child: _buildUserSection(),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 5),
 
               _FadeSlideIn(
                 animation: _stagger(
