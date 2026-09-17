@@ -34,6 +34,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
   final _socketService = SocketService();
   bool _hasCenteredOnce = false;
   String? _currentUserId;
+  LatLng? _deviceInitialCenter;
 
   List<Circle> _circles = [];
   String? activeCircleId;
@@ -53,9 +54,35 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
     _loadCurrentUser();
     _loadCircles();
     _connectSocket();
+    _resolveDeviceInitialCenter();
     _positionSub = AppLocationController.instance.positionStream.listen(
       _updateOwnMemberLocally,
     );
+  }
+
+  Future<void> _resolveDeviceInitialCenter() async {
+    try {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null && mounted) {
+        setState(() {
+          _deviceInitialCenter = LatLng(last.latitude, last.longitude);
+        });
+      }
+    } catch (e) {
+      debugPrint('No se pudo obtener última ubicación conocida: $e');
+    }
+  }
+
+  LatLng? get _initialCenter {
+    if (_deviceInitialCenter != null) return _deviceInitialCenter;
+    if (_members.isNotEmpty) {
+      final mine = _members.firstWhere(
+        (m) => m.userId == _currentUserId,
+        orElse: () => _members.first,
+      );
+      return mine.position;
+    }
+    return null;
   }
 
   Future<void> _loadCurrentUser() async {
@@ -649,6 +676,11 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
       );
     }
 
+    final center = _initialCenter;
+    if (center == null) {
+      return Center(child: CircularProgressIndicator(color: colors.selected));
+    }
+
     return Stack(
       children: [
         FamilyMap(
@@ -656,6 +688,7 @@ class _MapaPageState extends State<MapaPage> with WidgetsBindingObserver {
           cartoApiKey: AppConfig.cartoApiKey,
           controller: _mapController,
           currentUserId: _currentUserId!,
+          initialCenter: center,
           onViewFullHistory: (member) async {
             try {
               final points = await _locationRepository.getUserHistory(

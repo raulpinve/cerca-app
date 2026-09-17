@@ -19,7 +19,6 @@ class LocationPoint {
   LatLng get position => LatLng(latitude, longitude);
 
   factory LocationPoint.fromJson(Map<String, dynamic> json) {
-    print('RAW recorded_at: ${json['recorded_at']}');
     return LocationPoint(
       latitude: double.parse(json['latitude'].toString()),
       longitude: double.parse(json['longitude'].toString()),
@@ -32,8 +31,6 @@ class LocationPoint {
 }
 
 /// Un tramo inferido: "se quedó quieto" o "se estaba moviendo".
-/// Se calcula en el cliente a partir de los puntos crudos — tu backend
-/// no tiene este concepto, así que no confundir con una tabla real.
 class LocationSegment {
   final bool isStop; // true = quieto, false = en movimiento
   final DateTime startTime;

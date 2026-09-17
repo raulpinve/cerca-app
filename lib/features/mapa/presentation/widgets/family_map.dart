@@ -40,7 +40,7 @@ class FamilyMap extends StatefulWidget {
     required this.members,
     required this.currentUserId,
     required this.cartoApiKey,
-    this.initialCenter = const LatLng(4.7110, -74.0721),
+    required this.initialCenter,
     this.controller,
     this.onViewFullHistory,
   });
