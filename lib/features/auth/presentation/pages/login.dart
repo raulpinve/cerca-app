@@ -4,8 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-enum _AuthMode { login, register }
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -14,30 +12,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  _AuthMode _mode = _AuthMode.login;
   bool _loading = false;
-  bool _obscurePassword = true;
   String? _errorMessage;
-
-  bool get _isLogin => _mode == _AuthMode.login;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _toggleMode() {
-    setState(() {
-      _mode = _isLogin ? _AuthMode.register : _AuthMode.login;
-      _errorMessage = null;
-    });
-  }
 
   Future<void> _handleSuccessfulAuth(User? user) async {
     if (user == null) {
@@ -48,65 +24,6 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!started) {
       debugPrint('Login OK pero no se pudo iniciar el tracking.');
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    try {
-      setState(() {
-        _loading = true;
-        _errorMessage = null;
-      });
-
-      final UserCredential userCredential = _isLogin
-          ? await FirebaseAuth.instance.signInWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            )
-          : await FirebaseAuth.instance.createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            );
-
-      await _handleSuccessfulAuth(userCredential.user);
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Error Firebase: ${e.message}');
-      setState(() => _errorMessage = _mapFirebaseError(e));
-    } catch (e) {
-      debugPrint('Error de autenticación: $e');
-      setState(
-        () => _errorMessage = _isLogin
-            ? 'No se pudo iniciar sesión.'
-            : 'No se pudo crear la cuenta.',
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
-  }
-
-  String _mapFirebaseError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'El correo ingresado no es válido.';
-      case 'user-disabled':
-        return 'Esta cuenta fue deshabilitada.';
-      case 'user-not-found':
-        return 'No existe una cuenta con ese correo.';
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Correo o contraseña incorrectos.';
-      case 'email-already-in-use':
-        return 'Ya existe una cuenta con ese correo.';
-      case 'weak-password':
-        return 'La contraseña es demasiado débil.';
-      default:
-        return _isLogin
-            ? 'No se pudo iniciar sesión.'
-            : 'No se pudo crear la cuenta.';
     }
   }
 
@@ -160,10 +77,8 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildHeader(colors),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                   _buildCard(colors),
-                  const SizedBox(height: 20),
-                  _buildFooterToggle(colors),
                 ],
               ),
             ),
@@ -177,34 +92,34 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [colors.selected, colors.badge],
             ),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: colors.selected.withValues(alpha: 0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.shield_outlined,
-            size: 32,
-            color: Colors.white,
+            size: 36,
+            color: colors.surface,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         RichText(
           text: TextSpan(
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 26,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
               color: colors.textPrimary,
@@ -218,16 +133,12 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: Text(
-            _isLogin ? 'Ingresá para continuar' : 'Creá tu cuenta en segundos',
-            key: ValueKey(_isLogin),
-            style: TextStyle(
-              fontSize: 14,
-              color: colors.textSecondary,
-            ),
+        const SizedBox(height: 8),
+        Text(
+          'Ingresá para continuar',
+          style: TextStyle(
+            fontSize: 15,
+            color: colors.textSecondary,
           ),
         ),
       ],
@@ -235,12 +146,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildCard(AppColors colors) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(28, 36, 28, 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: colors.border),
         boxShadow: [
@@ -251,286 +161,143 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTextField(
-              colors: colors,
-              controller: _emailController,
-              label: 'Correo electrónico',
-              icon: Icons.mail_outline_rounded,
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Ingresá tu correo.';
-                }
-                final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-                if (!emailRegex.hasMatch(value.trim())) {
-                  return 'Ingresá un correo válido.';
-                }
-                return null;
-              },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Iniciá sesión con tu cuenta de Google para continuar',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.textSecondary,
+              height: 1.4,
             ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              colors: colors,
-              controller: _passwordController,
-              label: 'Contraseña',
-              icon: Icons.lock_outline_rounded,
-              obscureText: _obscurePassword,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: colors.textSecondary,
-                  size: 20,
-                ),
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ingresá tu contraseña.';
-                }
-                if (value.length < 6) {
-                  return 'Mínimo 6 caracteres.';
-                }
-                return null;
-              },
-            ),
+          ),
+          const SizedBox(height: 28),
 
-            if (_isLogin) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _loading ? null : () {},
-                  style: TextButton.styleFrom(
-                    foregroundColor: colors.textSecondary,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    '¿Olvidaste tu contraseña?',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-            ],
-
-            SizedBox(height: _isLogin ? 12 : 20),
-
-            // Botón principal con gradiente
-            SizedBox(
-              height: 52,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [colors.selected, colors.badge],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.selected.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
+          // Botón Google
+          SizedBox(
+            height: 56,
+            child: Material(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: _loading ? null : _signInWithGoogle,
+                child: Container(
+                  decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: _loading ? null : _submit,
-                    child: Center(
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: Text(
-                                _isLogin ? 'Iniciar sesión' : 'Crear cuenta',
-                                key: ValueKey(_isLogin),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                    border: Border.all(color: colors.border, width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.textPrimary.withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: _loading
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: colors.selected,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _GoogleLogo(size: 22, color: colors.selected),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Continuar con Google',
+                                style: TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textPrimary,
                                 ),
                               ),
-                            ),
-                    ),
+                            ],
+                          ),
                   ),
                 ),
               ),
             ),
+          ),
 
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.badge.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.badge.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      size: 18,
-                      color: colors.badge,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(color: colors.badge, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: Divider(color: colors.border)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'o continuá con',
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Expanded(child: Divider(color: colors.border)),
-              ],
-            ),
+          if (_errorMessage != null) ...[
             const SizedBox(height: 16),
-
-            // Botón Google
-            SizedBox(
-              height: 50,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.textPrimary,
-                  side: BorderSide(color: colors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: colors.badge.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colors.badge.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 18,
+                    color: colors.badge,
                   ),
-                ),
-                onPressed: _loading ? null : _signInWithGoogle,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.g_mobiledata_rounded,
-                      size: 26,
-                      color: colors.textSecondary,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: colors.badge, fontSize: 13),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Google',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
+
+          const SizedBox(height: 20),
+          Text(
+            'Al continuar aceptás nuestros Términos y Política de privacidad.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: colors.textSecondary.withValues(alpha: 0.8),
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildFooterToggle(AppColors colors) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          _isLogin ? '¿No tenés cuenta?' : '¿Ya tenés cuenta?',
-          style: TextStyle(color: colors.textSecondary, fontSize: 14),
-        ),
-        TextButton(
-          onPressed: _loading ? null : _toggleMode,
-          style: TextButton.styleFrom(
-            foregroundColor: colors.selected,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-          ),
-          child: Text(
-            _isLogin ? 'Registrate' : 'Iniciar sesión',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
+/// Marca simple de Google para el botón, coloreada con el theme (colors.selected)
+/// para mantener consistencia visual con el resto de la app. Si preferís el
+/// logo oficial en 4 colores, reemplazá este widget por un
+/// Image.asset('assets/google_logo.png') con el PNG oficial.
+class _GoogleLogo extends StatelessWidget {
+  final double size;
+  final Color color;
+  const _GoogleLogo({required this.size, required this.color});
 
-  Widget _buildTextField({
-    required AppColors colors,
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      autocorrect: false,
-      style: TextStyle(color: colors.textPrimary, fontSize: 15),
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 14),
-        prefixIcon: Icon(icon, color: colors.textSecondary, size: 20),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: colors.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.selected, width: 1.6),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.badge),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colors.badge, width: 1.6),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      child: Text(
+        'G',
+        style: TextStyle(
+          fontSize: size * 0.85,
+          fontWeight: FontWeight.w700,
+          color: color,
+          height: 1,
         ),
       ),
     );
