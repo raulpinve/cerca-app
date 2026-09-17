@@ -214,10 +214,12 @@ class _ProfilePageState extends State<ProfilePage>
 
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(
-        milliseconds: 700,
-      ),
+      duration: const Duration(milliseconds: 700),
     );
+
+    _entranceController.forward(
+      from: 0,
+    ); // arranca ya, sin depender de _loadUser
 
     _loadUser();
   }
